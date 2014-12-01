@@ -16,7 +16,7 @@ build-type:          Simple
 -- extra-source-files:
 cabal-version:       >=1.10
 
-executable remove-trivial-conflicts
+executable remove_trivial_conflicts
   main-is:             remove_trivial_conflicts.hs
   -- other-modules:
   -- other-extensions:
