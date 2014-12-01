@@ -6,9 +6,10 @@ import Control.Monad.Writer
 import Data.List
 import System.Directory (renameFile)
 import System.Environment (getArgs)
+import System.Exit
 import System.FilePath
 import System.Process
-import System.Exit
+import qualified System.IO as IO
 
 data Conflict = Conflict
   { _markerA    :: String -- <<<<<<<....
@@ -26,7 +27,7 @@ prettyConflict (Conflict markerA markerBase markerB markerEnd linesA linesBase l
   [ markerA    : linesA
   , markerBase : linesBase
   , markerB    : linesB
-  , markerEnd  : []
+  , [markerEnd]
   ]
 
 resolveConflict :: Conflict -> Maybe String
@@ -101,14 +102,16 @@ resolveContent = asResult . mconcat . map go
       Nothing -> (Sum 0, Sum 1, prettyConflict conflict)
       Just trivialLines -> (Sum 1, Sum 0, trivialLines)
 
-gitAdd :: FilePath -> IO ()
-gitAdd fileName = do
-  exitCode <- system cmd
+verifyExitCode :: String -> ExitCode -> IO ()
+verifyExitCode cmd exitCode =
   case exitCode of
     ExitFailure i ->
       putStrLn $
       "Failed to execute: " ++ cmd ++ " (" ++ show i ++ ")"
     ExitSuccess -> return ()
+
+gitAdd :: FilePath -> IO ()
+gitAdd fileName = verifyExitCode cmd =<< system cmd
   where
     cmd = "git add -- " ++ show fileName
 
@@ -138,5 +141,15 @@ resolve fileName =
 
 main :: IO ()
 main = do
-  fileNames <- getArgs
+  args <- getArgs
+  case args of
+    [] -> return ()
+    _ -> fail "No args acceptable"
+  let stdin = ""
+  (exitCode, stdout, stderr) <-
+    readProcessWithExitCode "git" ["status", "--porcelain"] stdin
+  IO.hPutStrLn IO.stderr stderr
+  verifyExitCode "git status --porcelain" exitCode
+  let fileNames =
+          map ((!! 1) . words) $ filter ("UU" `isPrefixOf`) $ lines stdout
   mapM_ resolve fileNames
