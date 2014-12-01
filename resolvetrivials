@@ -1,0 +1,1 @@
+git status --porcelain|grep ^UU|cut -d' ' -f2|xargs remove_trivial_conflicts
