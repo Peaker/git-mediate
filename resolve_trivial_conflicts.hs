@@ -5,11 +5,9 @@ import Control.Monad.State
 import Control.Monad.Writer
 import Data.List
 import System.Directory (renameFile)
-import System.Environment (getArgs)
-import System.Exit
+import System.Environment (getProgName, getArgs, getEnv)
 import System.FilePath
 import System.Process
-import qualified System.IO as IO
 
 data Conflict = Conflict
   { _markerA    :: String -- <<<<<<<....
@@ -34,6 +32,7 @@ resolveConflict :: Conflict -> Maybe String
 resolveConflict (Conflict _ _ _ _ a base b)
   | a == base = Just $ unlines b
   | b == base = Just $ unlines a
+  | a == b = Just $ unlines a
   | otherwise = Nothing
 
 breakUpToMarker :: (Eq a, MonadState [[a]] m) => a -> m [[a]]
@@ -102,21 +101,21 @@ resolveContent = asResult . mconcat . map go
       Nothing -> (Sum 0, Sum 1, prettyConflict conflict)
       Just trivialLines -> (Sum 1, Sum 0, trivialLines)
 
-verifyExitCode :: String -> ExitCode -> IO ()
-verifyExitCode cmd exitCode =
-  case exitCode of
-    ExitFailure i ->
-      putStrLn $
-      "Failed to execute: " ++ cmd ++ " (" ++ show i ++ ")"
-    ExitSuccess -> return ()
-
 gitAdd :: FilePath -> IO ()
-gitAdd fileName = verifyExitCode cmd =<< system cmd
-  where
-    cmd = "git add -- " ++ show fileName
+gitAdd fileName =
+  callProcess "git" ["add", "--", fileName]
 
-resolve :: FilePath -> IO ()
-resolve fileName =
+data UseEditor = UseEditor | NoEditor
+
+openEditor :: UseEditor -> FilePath -> IO ()
+openEditor NoEditor _ = return ()
+openEditor UseEditor path =
+  do
+    editor <- getEnv "EDITOR"
+    callProcess editor [path]
+
+resolve :: UseEditor -> FilePath -> IO ()
+resolve useEditor fileName =
   do
     content <- parseConflicts <$> readFile fileName
     case resolveContent content of
@@ -125,9 +124,11 @@ resolve fileName =
           failures == 0 -> do
             putStrLn $ fileName ++ ": No conflicts, git-adding"
             gitAdd fileName
-        | successes == 0 -> putStrLn $ concat
-            [ fileName, ": Failed to resolve any of the "
-            , show failures, " conflicts" ]
+        | successes == 0 -> do
+            putStrLn $ concat
+              [ fileName, ": Failed to resolve any of the "
+              , show failures, " conflicts" ]
+            openEditor useEditor fileName
         | otherwise ->
           do
             putStrLn $ concat
@@ -137,19 +138,34 @@ resolve fileName =
               ]
             renameFile fileName (fileName <.> "bk")
             writeFile fileName newContent
-            when (failures == 0) $ gitAdd fileName
+            if failures == 0
+              then gitAdd fileName
+              else openEditor useEditor fileName
+
+stripNewline :: String -> String
+stripNewline x
+    | "\n" `isSuffixOf` x = init x
+    | otherwise = x
 
 main :: IO ()
 main = do
   args <- getArgs
-  case args of
-    [] -> return ()
-    _ -> fail "No args acceptable"
+  useEditor <-
+    case args of
+    [] -> return NoEditor
+    ["-e"] -> return UseEditor
+    _ ->
+      do  prog <- getProgName
+          fail $ unlines
+            [ "Usage: " ++ prog ++ " [-e]"
+            , ""
+            , "-e    Execute $EDITOR for each conflicted file that remains conflicted"
+            ]
+
   let stdin = ""
-  (exitCode, stdout, stderr) <-
-    readProcessWithExitCode "git" ["status", "--porcelain"] stdin
-  IO.hPutStrLn IO.stderr stderr
-  verifyExitCode "git status --porcelain" exitCode
-  let fileNames =
-          map ((!! 1) . words) $ filter ("UU" `isPrefixOf`) $ lines stdout
-  mapM_ resolve fileNames
+  statusPorcelain <- readProcess "git" ["status", "--porcelain"] stdin
+  let rootRelativeFileNames =
+          map ((!! 1) . words) $ filter ("UU" `isPrefixOf`) $ lines statusPorcelain
+  rootDir <- stripNewline <$> readProcess "git" ["rev-parse", "--show-toplevel"] stdin
+  print rootDir
+  mapM_ (resolve useEditor . (rootDir </>)) rootRelativeFileNames
