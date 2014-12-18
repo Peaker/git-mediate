@@ -105,17 +105,24 @@ gitAdd :: FilePath -> IO ()
 gitAdd fileName =
   callProcess "git" ["add", "--", fileName]
 
-data UseEditor = UseEditor | NoEditor
+newtype Options = Options
+  { useEditor :: Bool
+  }
+instance Monoid Options where
+  mempty = Options False
+  Options a `mappend` Options b
+    | a && b = error "Multiple -e flags used"
+    | otherwise = Options (a || b)
 
-openEditor :: UseEditor -> FilePath -> IO ()
-openEditor NoEditor _ = return ()
-openEditor UseEditor path =
+openEditor :: Options -> FilePath -> IO ()
+openEditor (Options False) _ = return ()
+openEditor (Options True) path =
   do
     editor <- getEnv "EDITOR"
     callProcess editor [path]
 
-resolve :: UseEditor -> FilePath -> IO ()
-resolve useEditor fileName =
+resolve :: Options -> FilePath -> IO ()
+resolve opts fileName =
   do
     content <- parseConflicts <$> readFile fileName
     case resolveContent content of
@@ -128,7 +135,7 @@ resolve useEditor fileName =
             putStrLn $ concat
               [ fileName, ": Failed to resolve any of the "
               , show failures, " conflicts" ]
-            openEditor useEditor fileName
+            openEditor opts fileName
         | otherwise ->
           do
             putStrLn $ concat
@@ -140,21 +147,18 @@ resolve useEditor fileName =
             writeFile fileName newContent
             if failures == 0
               then gitAdd fileName
-              else openEditor useEditor fileName
+              else openEditor opts fileName
 
 stripNewline :: String -> String
 stripNewline x
     | "\n" `isSuffixOf` x = init x
     | otherwise = x
 
-main :: IO ()
-main = do
-  args <- getArgs
-  useEditor <-
-    case args of
-    [] -> return NoEditor
-    ["-e"] -> return UseEditor
-    _ ->
+getOpts :: [String] -> IO Options
+getOpts = fmap mconcat . mapM parseArg
+  where
+    parseArg "-e" = return mempty { useEditor = True }
+    parseArg _ =
       do  prog <- getProgName
           fail $ unlines
             [ "Usage: " ++ prog ++ " [-e]"
@@ -162,10 +166,13 @@ main = do
             , "-e    Execute $EDITOR for each conflicted file that remains conflicted"
             ]
 
+main :: IO ()
+main = do
+  opts <- getOpts =<< getArgs
   let stdin = ""
   statusPorcelain <- readProcess "git" ["status", "--porcelain"] stdin
   let rootRelativeFileNames =
           map ((!! 1) . words) $ filter ("UU" `isPrefixOf`) $ lines statusPorcelain
   rootDir <- stripNewline <$> readProcess "git" ["rev-parse", "--show-toplevel"] stdin
   print rootDir
-  mapM_ (resolve useEditor . (rootDir </>)) rootRelativeFileNames
+  mapM_ (resolve opts . (rootDir </>)) rootRelativeFileNames
