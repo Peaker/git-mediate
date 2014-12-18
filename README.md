@@ -91,4 +91,16 @@ cabal install
 
 # Use
 
-Call the resolve-trivial-conflicts from a git repository with conflicts
+Call the resolve-trivial-conflicts from a git repository with conflicts.
+
+# Additional features
+
+## Open editor
+
+You can use the `-e` flag to invoke your `$EDITOR` on every conflicted file that could not be automatically resolved.
+
+## Show conflict diffs
+
+Sometimes, the conflict is just a giant block of incomprehensible text next to another giant block of incomprehensible text.
+
+You can use the `-d` flag to show the conflict in diff-from-base form. Then, you can manually apply the changes you see in both the base and whereever needed, and use resolve-trivial-conflicts again to make sure you've updated everything appropriately.
