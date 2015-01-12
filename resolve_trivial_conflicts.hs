@@ -5,7 +5,7 @@ import Control.Monad.State
 import Control.Monad.Writer
 import Data.List
 import PPDiff (ppDiff)
-import System.Directory (renameFile)
+import System.Directory (renameFile, removeFile)
 import System.Environment (getProgName, getArgs, getEnv)
 import System.FilePath
 import System.Process
@@ -183,8 +183,10 @@ resolve opts fileName =
               , " conflicts (failed to resolve " ++ show failures ++ " conflicts)"
               , if failures == 0 then ", git adding" else ""
               ]
-            renameFile fileName (fileName <.> "bk")
+            let bkup = fileName <.> "bk"
+            renameFile fileName bkup
             writeFile fileName newContent
+            removeFile bkup
             if failures == 0
               then gitAdd fileName
               else dumpAndOpenEditor opts fileName diffs
