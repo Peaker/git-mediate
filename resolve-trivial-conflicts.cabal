@@ -4,7 +4,7 @@
 name:                resolve-trivial-conflicts
 version:             0.2.0.1
 synopsis:            Remove trivial conflict markers in a git repository
--- description:
+description:         Remove trivial conflict markers in a git repository
 homepage:            https://github.com/ElastiLotem/resolve-trivial-conflicts
 license:             GPL-2
 license-file:        LICENSE
@@ -15,6 +15,10 @@ category:            Development
 build-type:          Simple
 -- extra-source-files:
 cabal-version:       >=1.10
+
+source-repository head
+  type: git
+  location: https://github.com/Elastilotem/resolve-trivial-conflicts
 
 executable resolve-trivial-conflicts
   main-is:             resolve_trivial_conflicts.hs
