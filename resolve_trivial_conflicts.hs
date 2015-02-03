@@ -218,7 +218,7 @@ getOpts = fmap mconcat . mapM parseArg
     parseArg _ =
       do  prog <- getProgName
           fail $ unlines
-            [ "Usage: " ++ prog ++ " [-e] [-d] [-c]"
+            [ "Usage: " ++ prog ++ " [-e] [-d] [-c] [-C]"
             , ""
             , "-e    Execute $EDITOR for each conflicted file that remains conflicted"
             , "-d    Dump the left/right diffs from base in each conflict remaining"
