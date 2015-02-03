@@ -1,12 +1,18 @@
-module PPDiff (ppDiff) where
+module PPDiff
+  ( ColorEnable(..)
+  , ppDiff
+  ) where
 
 import Data.Algorithm.Diff (Diff(..))
 import System.Console.ANSI
 
-wrap :: Color -> String -> String
-wrap color str = setSGRCode [SetColor Foreground Vivid color] ++ str ++ setSGRCode [Reset]
+data ColorEnable = EnableColor | DisableColor
 
-ppDiff :: Diff String -> String
-ppDiff (First x)  = wrap Red   $ '-':x
-ppDiff (Second x) = wrap Green $ '+':x
-ppDiff (Both x _) =              ' ':x
+wrap :: ColorEnable -> Color -> String -> String
+wrap DisableColor _ str = str
+wrap EnableColor color str = setSGRCode [SetColor Foreground Vivid color] ++ str ++ setSGRCode [Reset]
+
+ppDiff :: ColorEnable -> Diff String -> String
+ppDiff c (First x)  = wrap c Red   $ '-':x
+ppDiff c (Second x) = wrap c Green $ '+':x
+ppDiff c (Both x _) =              ' ':x

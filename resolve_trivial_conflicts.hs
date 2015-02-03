@@ -1,15 +1,18 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE FlexibleContexts, RecordWildCards #-}
+
 import Control.Applicative
 import Control.Monad.State
 import Control.Monad.Writer
+import Data.Algorithm.Diff (Diff, getDiff)
 import Data.List
-import PPDiff (ppDiff)
+import PPDiff (ppDiff, ColorEnable(..))
 import System.Directory (renameFile, removeFile)
 import System.Environment (getProgName, getArgs, getEnv)
 import System.FilePath
+import System.Posix.IO (stdOutput)
+import System.Posix.Terminal (queryTerminal)
 import System.Process
-import Data.Algorithm.Diff (Diff, getDiff)
 
 data Side = A | B
   deriving (Eq, Ord, Show)
@@ -128,13 +131,22 @@ gitAdd fileName =
 data Options = Options
   { shouldUseEditor :: Bool
   , shouldDumpDiffs :: Bool
+  , shouldUseColor :: Maybe ColorEnable
   }
 instance Monoid Options where
-  mempty = Options False False
-  Options a0 b0 `mappend` Options a1 b1 =
-    Options (combineBool a0 a1 "-e") (combineBool b0 b1 "-d")
+  mempty = Options False False Nothing
+  Options a0 b0 c0 `mappend` Options a1 b1 c1 =
+    Options
+    (combineBool a0 a1 "-e")
+    (combineBool b0 b1 "-d")
+    (combineMaybe c0 c1 "-c or -C")
     where
-      combineBool True True flag = error $ "Multiple " ++ flag ++ " flags used"
+      err flag = error $ "Multiple " ++ flag ++ " flags used"
+      combineMaybe (Just _) (Just _) flag = err flag
+      combineMaybe Nothing Nothing _ = Nothing
+      combineMaybe (Just x) Nothing _ = Just x
+      combineMaybe Nothing (Just y) _ = Just y
+      combineBool True True flag = err flag
       combineBool x y _ = x || y
 
 openEditor :: Options -> FilePath -> IO ()
@@ -145,24 +157,24 @@ openEditor opts path
       callProcess editor [path]
   | otherwise = return ()
 
-dumpDiffs :: Options -> FilePath -> [SideDiff] -> IO ()
-dumpDiffs opts filePath diffs
+dumpDiffs :: ColorEnable -> Options -> FilePath -> [SideDiff] -> IO ()
+dumpDiffs colorEnable opts filePath diffs
   | shouldDumpDiffs opts = mapM_ dumpDiff diffs
   | otherwise = return ()
   where
     dumpDiff (side, lineNo, diff) =
       do
         putStrLn $ filePath ++ ":" ++ show lineNo ++ ":Diff" ++ show side
-        putStr $ unlines $ map ppDiff diff
+        putStr $ unlines $ map (ppDiff colorEnable) diff
 
-dumpAndOpenEditor :: Options -> FilePath -> [SideDiff] -> IO ()
-dumpAndOpenEditor opts path diffs =
+dumpAndOpenEditor :: ColorEnable -> Options -> FilePath -> [SideDiff] -> IO ()
+dumpAndOpenEditor colorEnable opts path diffs =
   do
-    dumpDiffs opts path diffs
+    dumpDiffs colorEnable opts path diffs
     openEditor opts path
 
-resolve :: Options -> FilePath -> IO ()
-resolve opts fileName =
+resolve :: ColorEnable -> Options -> FilePath -> IO ()
+resolve colorEnable opts fileName =
   do
     content <- parseConflicts <$> readFile fileName
     case resolveContent content of
@@ -175,7 +187,7 @@ resolve opts fileName =
             putStrLn $ concat
               [ fileName, ": Failed to resolve any of the "
               , show failures, " conflicts" ]
-            dumpAndOpenEditor opts fileName diffs
+            dumpAndOpenEditor colorEnable opts fileName diffs
         | otherwise ->
           do
             putStrLn $ concat
@@ -189,7 +201,7 @@ resolve opts fileName =
             removeFile bkup
             if failures == 0
               then gitAdd fileName
-              else dumpAndOpenEditor opts fileName diffs
+              else dumpAndOpenEditor colorEnable opts fileName diffs
 
 stripNewline :: String -> String
 stripNewline x
@@ -201,21 +213,35 @@ getOpts = fmap mconcat . mapM parseArg
   where
     parseArg "-e" = return mempty { shouldUseEditor = True }
     parseArg "-d" = return mempty { shouldDumpDiffs = True }
+    parseArg "-c" = return mempty { shouldUseColor = Just EnableColor }
+    parseArg "-C" = return mempty { shouldUseColor = Just DisableColor }
     parseArg _ =
       do  prog <- getProgName
           fail $ unlines
-            [ "Usage: " ++ prog ++ " [-e] [-d]"
+            [ "Usage: " ++ prog ++ " [-e] [-d] [-c]"
             , ""
             , "-e    Execute $EDITOR for each conflicted file that remains conflicted"
             , "-d    Dump the left/right diffs from base in each conflict remaining"
+            , "-c    Enable color"
+            , "-C    Disable color"
             ]
 
+shouldUseColorByTerminal :: IO ColorEnable
+shouldUseColorByTerminal =
+    do  istty <- queryTerminal stdOutput
+        return $ if istty then EnableColor else DisableColor
+
 main :: IO ()
-main = do
-  opts <- getOpts =<< getArgs
-  let stdin = ""
-  statusPorcelain <- readProcess "git" ["status", "--porcelain"] stdin
-  let rootRelativeFileNames =
-          map ((!! 1) . words) $ filter ("UU" `isPrefixOf`) $ lines statusPorcelain
-  rootDir <- stripNewline <$> readProcess "git" ["rev-parse", "--show-toplevel"] stdin
-  mapM_ (resolve opts . (rootDir </>)) rootRelativeFileNames
+main =
+  do  opts <- getOpts =<< getArgs
+      colorEnable <-
+          case shouldUseColor opts of
+              Nothing -> shouldUseColorByTerminal
+              Just colorEnable -> return colorEnable
+      let stdin = ""
+      statusPorcelain <- readProcess "git" ["status", "--porcelain"] stdin
+      let rootRelativeFileNames =
+              map ((!! 1) . words) $ filter ("UU" `isPrefixOf`) $ lines statusPorcelain
+      rootDir <- stripNewline <$> readProcess "git" ["rev-parse", "--show-toplevel"] stdin
+      mapM_ (resolve colorEnable opts .
+             (rootDir </>)) rootRelativeFileNames
