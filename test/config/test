@@ -1,0 +1,35 @@
+set -e
+set -u
+
+DIR="$( dirname "$0" )"
+cd ${DIR}
+
+git init
+
+git config --global --unset merge.conflictstyle
+(../${resolve_trivial_conflicts} && exit 11) || echo Conflict style unset errorized correctly
+
+git config --global merge.conflictstyle diff2
+(../${resolve_trivial_conflicts} && exit 12) || echo Conflict style diff2 errorized correctly
+
+git config --global merge.conflictstyle diff3
+../${resolve_trivial_conflicts}
+
+echo diff3 accepted correctly
+
+git config merge.conflictstyle diff2
+(../${resolve_trivial_conflicts} && exit 12) || echo Per-project conflict style diff2 errorized correctly
+
+(../${resolve_trivial_conflicts} -s && exit 12) || echo Per-project conflict style diff2 failure to override errorized correctly
+git config --unset merge.conflictstyle
+git config --global merge.conflictstyle diff2
+../${resolve_trivial_conflicts} -s
+style=$(git config merge.conflictstyle)
+if [ "$style" == "diff3" ]; then
+  echo "Conflict style set correctly"
+else
+  echo '-s' did not set conflict style
+  exit 1
+fi
+
+rm -rf .git

@@ -2,6 +2,8 @@
 {-# LANGUAGE FlexibleContexts, RecordWildCards #-}
 
 import           Control.Applicative ((<$>))
+import qualified Control.Exception as E
+import           Control.Monad (when, unless)
 import           Control.Monad.State (MonadState, state, evalStateT)
 import           Control.Monad.Writer (runWriter, tell)
 import           Data.Algorithm.Diff (Diff, getDiff)
@@ -12,10 +14,11 @@ import qualified Data.Monoid as Monoid
 import           PPDiff (ppDiff, ColorEnable(..))
 import           System.Directory (renameFile, removeFile)
 import           System.Environment (getProgName, getArgs, getEnv)
+import           System.Exit (ExitCode(..))
 import           System.FilePath ((<.>), (</>))
 import           System.Posix.IO (stdOutput)
 import           System.Posix.Terminal (queryTerminal)
-import           System.Process (callProcess, readProcess)
+import           System.Process (callProcess, readProcess, readProcessWithExitCode)
 
 data Side = A | B
   deriving (Eq, Ord, Show)
@@ -135,14 +138,16 @@ data Options = Options
   { shouldUseEditor :: Bool
   , shouldDumpDiffs :: Bool
   , shouldUseColor :: Maybe ColorEnable
+  , shouldSetConflictStyle :: Bool
   }
 instance Monoid Options where
-  mempty = Options False False Nothing
-  Options a0 b0 c0 `mappend` Options a1 b1 c1 =
+  mempty = Options False False Nothing False
+  Options oe0 od0 oc0 os0 `mappend` Options oe1 od1 oc1 os1 =
     Options
-    (combineBool a0 a1 "-e")
-    (combineBool b0 b1 "-d")
-    (combineMaybe c0 c1 "-c or -C")
+    (combineBool oe0 oe1 "-e")
+    (combineBool od0 od1 "-d")
+    (combineMaybe oc0 oc1 "-c or -C")
+    (os0 || os1)
     where
       err flag = error $ "Multiple " ++ flag ++ " flags used"
       combineMaybe (Just _) (Just _) flag = err flag
@@ -151,6 +156,26 @@ instance Monoid Options where
       combineMaybe Nothing (Just y) _ = Just y
       combineBool True True flag = err flag
       combineBool x y _ = x || y
+
+getOpts :: [String] -> IO Options
+getOpts = fmap mconcat . mapM parseArg
+  where
+    parseArg "-e" = return mempty { shouldUseEditor = True }
+    parseArg "-d" = return mempty { shouldDumpDiffs = True }
+    parseArg "-c" = return mempty { shouldUseColor = Just EnableColor }
+    parseArg "-C" = return mempty { shouldUseColor = Just DisableColor }
+    parseArg "-s" = return mempty { shouldSetConflictStyle = True }
+    parseArg _ =
+      do  prog <- getProgName
+          fail $ unlines
+            [ "Usage: " ++ prog ++ " [-e] [-d] [-c] [-C] [-s]"
+            , ""
+            , "-e    Execute $EDITOR for each conflicted file that remains conflicted"
+            , "-d    Dump the left/right diffs from base in each conflict remaining"
+            , "-c    Enable color"
+            , "-C    Disable color"
+            , "-s    Configure git's global merge.conflictstyle to diff3 if needed"
+            ]
 
 openEditor :: Options -> FilePath -> IO ()
 openEditor opts path
@@ -211,24 +236,6 @@ stripNewline x
     | "\n" `isSuffixOf` x = init x
     | otherwise = x
 
-getOpts :: [String] -> IO Options
-getOpts = fmap mconcat . mapM parseArg
-  where
-    parseArg "-e" = return mempty { shouldUseEditor = True }
-    parseArg "-d" = return mempty { shouldDumpDiffs = True }
-    parseArg "-c" = return mempty { shouldUseColor = Just EnableColor }
-    parseArg "-C" = return mempty { shouldUseColor = Just DisableColor }
-    parseArg _ =
-      do  prog <- getProgName
-          fail $ unlines
-            [ "Usage: " ++ prog ++ " [-e] [-d] [-c] [-C]"
-            , ""
-            , "-e    Execute $EDITOR for each conflicted file that remains conflicted"
-            , "-d    Dump the left/right diffs from base in each conflict remaining"
-            , "-c    Enable color"
-            , "-C    Disable color"
-            ]
-
 shouldUseColorByTerminal :: IO ColorEnable
 shouldUseColorByTerminal =
     do  istty <- queryTerminal stdOutput
@@ -239,6 +246,40 @@ unprefix prefix str
     | prefix `isPrefixOf` str = Just (drop (length prefix) str)
     | otherwise = Nothing
 
+getConflictStyle :: IO String
+getConflictStyle =
+    do  (exitCode, stdout, _) <- readProcessWithExitCode "git" ["config", "merge.conflictstyle"] stdin
+        case exitCode of
+            ExitSuccess -> return $ stripNewline stdout
+            ExitFailure 1 -> return "unset"
+            ExitFailure _ -> E.throwIO exitCode
+    where
+        stdin = ""
+
+setConflictStyle :: IO ()
+setConflictStyle =
+    callProcess "git" ["config", "--global", "merge.conflictstyle", "diff3"]
+
+checkConflictStyle :: Options -> IO ()
+checkConflictStyle opts =
+    do  conflictStyle <- getConflictStyle
+        when (conflictStyle /= "diff3") $
+            do  unless (shouldSetConflictStyle opts) $
+                    fail $ concat
+                    [ "merge.conflictstyle must be diff3 but is "
+                    , show conflictStyle
+                    , ". Use -s to automatically set it globally"
+                    ]
+                setConflictStyle
+
+                newConflictStyle <- getConflictStyle
+                when (newConflictStyle /= "diff3") $
+                    fail $ concat
+                    [ "Attempt to set conflict style failed. Perhaps you have"
+                    , " an incorrect merge.conflictstyle configuration "
+                    , "specified in your per-project .git/config?"
+                    ]
+
 main :: IO ()
 main =
   do  opts <- getOpts =<< getArgs
@@ -246,6 +287,7 @@ main =
           case shouldUseColor opts of
               Nothing -> shouldUseColorByTerminal
               Just colorEnable -> return colorEnable
+      checkConflictStyle opts
       let stdin = ""
       statusPorcelain <- readProcess "git" ["status", "--porcelain"] stdin
       let rootRelativeFileNames =

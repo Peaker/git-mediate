@@ -1,6 +1,5 @@
 set -e
 set -u
-set -x
 
 DIR="$( dirname "$0" )"
 cd ${DIR}
@@ -8,15 +7,15 @@ cd ${DIR}
 pwd
 rm -rf .git
 
-git init
+git init >/dev/null
 echo hi > 'a b'
 git add -- 'a b'
-git commit -m"a b file added"
+git commit -m"a b file added" >/dev/null
 echo changeA >> 'a b'
-git stash
+git stash >/dev/null
 echo changeB >> 'a b'
 git add 'a b'
-(git stash pop && exit 1) || echo "Conflict set up successfully"
+(git stash pop >/dev/null && exit 1) || echo "Conflict set up successfully"
 # Set up of conflict over
 
 ../${resolve_trivial_conflicts}
