@@ -165,9 +165,9 @@ getOpts = fmap mconcat . mapM parseArg
     parseArg "-c" = return mempty { shouldUseColor = Just EnableColor }
     parseArg "-C" = return mempty { shouldUseColor = Just DisableColor }
     parseArg "-s" = return mempty { shouldSetConflictStyle = True }
-    parseArg _ =
+    parseArg arg =
       do  prog <- getProgName
-          fail $ unlines
+          putStr $ unlines
             [ "Usage: " ++ prog ++ " [-e] [-d] [-c] [-C] [-s]"
             , ""
             , "-e    Execute $EDITOR for each conflicted file that remains conflicted"
@@ -176,6 +176,7 @@ getOpts = fmap mconcat . mapM parseArg
             , "-C    Disable color"
             , "-s    Configure git's global merge.conflictstyle to diff3 if needed"
             ]
+          fail $ "Unknown argument: " ++ show arg
 
 openEditor :: Options -> FilePath -> IO ()
 openEditor opts path
