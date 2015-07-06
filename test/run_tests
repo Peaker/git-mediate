@@ -1,0 +1,11 @@
+set -e
+set -u
+set -x
+
+DIR="$( dirname "$0" )"
+
+export resolve_trivial_conflicts=../dist/build/resolve-trivial-conflicts/resolve-trivial-conflicts
+
+echo Spaces test && ${DIR}/spaces/test
+
+echo Tests successful
