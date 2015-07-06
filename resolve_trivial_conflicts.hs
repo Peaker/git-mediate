@@ -1,18 +1,21 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE FlexibleContexts, RecordWildCards #-}
 
-import Control.Applicative
-import Control.Monad.State
-import Control.Monad.Writer
-import Data.Algorithm.Diff (Diff, getDiff)
-import Data.List
-import PPDiff (ppDiff, ColorEnable(..))
-import System.Directory (renameFile, removeFile)
-import System.Environment (getProgName, getArgs, getEnv)
-import System.FilePath
-import System.Posix.IO (stdOutput)
-import System.Posix.Terminal (queryTerminal)
-import System.Process
+import           Control.Applicative ((<$>))
+import           Control.Monad.State (MonadState, state, evalStateT)
+import           Control.Monad.Writer (runWriter, tell)
+import           Data.Algorithm.Diff (Diff, getDiff)
+import           Data.List (isPrefixOf, isSuffixOf)
+import           Data.Maybe (mapMaybe)
+import           Data.Monoid (Monoid(..))
+import qualified Data.Monoid as Monoid
+import           PPDiff (ppDiff, ColorEnable(..))
+import           System.Directory (renameFile, removeFile)
+import           System.Environment (getProgName, getArgs, getEnv)
+import           System.FilePath ((<.>), (</>))
+import           System.Posix.IO (stdOutput)
+import           System.Posix.Terminal (queryTerminal)
+import           System.Process (callProcess, readProcess)
 
 data Side = A | B
   deriving (Eq, Ord, Show)
@@ -109,20 +112,20 @@ getConflictDiffs Conflict{..} =
 resolveContent :: [Either String Conflict] -> NewContent
 resolveContent = asResult . mconcat . map go
   where
-    asResult (Sum successes, Sum failures, newContent, diffs) = NewContent
+    asResult (Monoid.Sum successes, Monoid.Sum failures, newContent, diffs) = NewContent
       { _resolvedSuccessfully = successes
       , _failedToResolve = failures
       , _newContent = newContent
       , _diffs = diffs
       }
-    go (Left line) = (Sum 0, Sum 0, unlines [line], [])
+    go (Left line) = (Monoid.Sum 0, Monoid.Sum 0, unlines [line], [])
     go (Right conflict) =
       case resolveConflict conflict of
       Nothing ->
-        ( Sum 0, Sum 1, prettyConflict conflict
+        ( Monoid.Sum 0, Monoid.Sum 1, prettyConflict conflict
         , getConflictDiffs conflict
         )
-      Just trivialLines -> (Sum 1, Sum 0, trivialLines, [])
+      Just trivialLines -> (Monoid.Sum 1, Monoid.Sum 0, trivialLines, [])
 
 gitAdd :: FilePath -> IO ()
 gitAdd fileName =
@@ -231,6 +234,11 @@ shouldUseColorByTerminal =
     do  istty <- queryTerminal stdOutput
         return $ if istty then EnableColor else DisableColor
 
+unprefix :: Eq a => [a] -> [a] -> Maybe [a]
+unprefix prefix str
+    | prefix `isPrefixOf` str = Just (drop (length prefix) str)
+    | otherwise = Nothing
+
 main :: IO ()
 main =
   do  opts <- getOpts =<< getArgs
@@ -241,7 +249,7 @@ main =
       let stdin = ""
       statusPorcelain <- readProcess "git" ["status", "--porcelain"] stdin
       let rootRelativeFileNames =
-              map ((!! 1) . words) $ filter ("UU" `isPrefixOf`) $ lines statusPorcelain
+              mapMaybe (unprefix "UU ") $ lines statusPorcelain
       rootDir <- stripNewline <$> readProcess "git" ["rev-parse", "--show-toplevel"] stdin
       mapM_ (resolve colorEnable opts .
              (rootDir </>)) rootRelativeFileNames
