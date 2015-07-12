@@ -13,10 +13,11 @@ import           Data.Maybe (mapMaybe)
 import           Data.Monoid (Monoid(..))
 import qualified Data.Monoid as Monoid
 import           PPDiff (ppDiff, ColorEnable(..))
-import           System.Directory (renameFile, removeFile)
+import           System.Directory (renameFile, removeFile, getCurrentDirectory)
 import           System.Environment (getProgName, getArgs, getEnv)
 import           System.Exit (ExitCode(..))
-import           System.FilePath ((<.>), (</>))
+import           System.FilePath ((<.>), makeRelative, joinPath, splitPath)
+import qualified System.FilePath as FilePath
 import           System.Posix.IO (stdOutput)
 import           System.Posix.Terminal (queryTerminal)
 import           System.Process (callProcess, readProcess, readProcessWithExitCode)
@@ -281,6 +282,20 @@ checkConflictStyle opts =
                     , "specified in your per-project .git/config?"
                     ]
 
+relativePath :: FilePath -> FilePath -> FilePath
+relativePath base path
+    | rel /= path = rel
+    | revRel /= base =
+          joinPath $ replicate (length (splitPath revRel)) ".."
+    | otherwise = path
+    where
+        rel = makeRelative base path
+        revRel = makeRelative path base
+
+(</>) :: FilePath -> FilePath -> FilePath
+"." </> p = p
+d </> p = d FilePath.</> p
+
 main :: IO ()
 main =
   do  opts <- getOpts =<< getArgs
@@ -293,6 +308,9 @@ main =
       statusPorcelain <- readProcess "git" ["status", "--porcelain"] stdin
       let rootRelativeFileNames =
               mapMaybe (unprefix "UU ") $ lines statusPorcelain
-      rootDir <- stripNewline <$> readProcess "git" ["rev-parse", "--show-toplevel"] stdin
+      cwd <- getCurrentDirectory
+      rootDir <-
+          relativePath cwd . stripNewline <$>
+          readProcess "git" ["rev-parse", "--show-toplevel"] stdin
       mapM_ (resolve colorEnable opts .
              (rootDir </>)) rootRelativeFileNames
