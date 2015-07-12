@@ -104,7 +104,6 @@ data NewContent = NewContent
   { _resolvedSuccessfully :: Int
   , _failedToResolve :: Int
   , _newContent :: String
-  , _diffs :: [SideDiff]
   }
 
 getConflictDiffs :: Conflict -> [SideDiff]
@@ -115,20 +114,17 @@ getConflictDiffs Conflict{..} =
 resolveContent :: [Either String Conflict] -> NewContent
 resolveContent = asResult . mconcat . map go
   where
-    asResult (Monoid.Sum successes, Monoid.Sum failures, newContent, diffs) = NewContent
+    asResult (Monoid.Sum successes, Monoid.Sum failures, newContent) =
+      NewContent
       { _resolvedSuccessfully = successes
       , _failedToResolve = failures
       , _newContent = newContent
-      , _diffs = diffs
       }
-    go (Left line) = (Monoid.Sum 0, Monoid.Sum 0, unlines [line], [])
+    go (Left line) = (Monoid.Sum 0, Monoid.Sum 0, unlines [line])
     go (Right conflict) =
       case resolveConflict conflict of
-      Nothing ->
-        ( Monoid.Sum 0, Monoid.Sum 1, prettyConflict conflict
-        , getConflictDiffs conflict
-        )
-      Just trivialLines -> (Monoid.Sum 1, Monoid.Sum 0, trivialLines, [])
+      Nothing -> (Monoid.Sum 0, Monoid.Sum 1, prettyConflict conflict)
+      Just trivialLines -> (Monoid.Sum 1, Monoid.Sum 0, trivialLines)
 
 gitAdd :: FilePath -> IO ()
 gitAdd fileName =
@@ -208,7 +204,7 @@ resolve colorEnable opts fileName =
   do
     content <- parseConflicts <$> readFile fileName
     case resolveContent content of
-      NewContent successes failures newContent diffs
+      NewContent successes failures newContent
         | successes == 0 &&
           failures == 0 -> do
             putStrLn $ fileName ++ ": No conflicts, git-adding"
@@ -217,7 +213,7 @@ resolve colorEnable opts fileName =
             putStrLn $ concat
               [ fileName, ": Failed to resolve any of the "
               , show failures, " conflicts" ]
-            dumpAndOpenEditor colorEnable opts fileName diffs
+            doDump
         | otherwise ->
           do
             putStrLn $ concat
@@ -231,7 +227,14 @@ resolve colorEnable opts fileName =
             removeFile bkup
             if failures == 0
               then gitAdd fileName
-              else dumpAndOpenEditor colorEnable opts fileName diffs
+              else doDump
+        where
+          doDump =
+            dumpAndOpenEditor colorEnable opts fileName $
+                [ cDiff
+                | Right conflict <- parseConflicts newContent
+                , cDiff <- getConflictDiffs conflict
+                ]
 
 stripNewline :: String -> String
 stripNewline x
