@@ -25,30 +25,29 @@ data Side = A | B
 type LineNo = Int
 
 data Conflict = Conflict
-  { _lineNo     :: LineNo
-  , _markerA    :: String -- <<<<<<<....
-  , _markerBase :: String -- |||||||....
-  , _markerB    :: String -- =======....
-  , _markerEnd  :: String -- >>>>>>>....
-  , _linesA     :: [String]
-  , _linesBase  :: [String]
-  , _linesB     :: [String]
+  { cMarkerA    :: (LineNo, String) -- <<<<<<<....
+  , cMarkerBase :: (LineNo, String) -- |||||||....
+  , cMarkerB    :: (LineNo, String) -- =======....
+  , cMarkerEnd  :: (LineNo, String) -- >>>>>>>....
+  , cLinesA     :: [String]
+  , cLinesBase  :: [String]
+  , cLinesB     :: [String]
   } deriving (Show)
 
 prettyConflict :: Conflict -> String
-prettyConflict (Conflict _ markerA markerBase markerB markerEnd linesA linesBase linesB) =
+prettyConflict Conflict {..} =
   unlines $ concat
-  [ markerA    : linesA
-  , markerBase : linesBase
-  , markerB    : linesB
-  , [markerEnd]
+  [ snd cMarkerA    : cLinesA
+  , snd cMarkerBase : cLinesBase
+  , snd cMarkerB    : cLinesB
+  , [snd cMarkerEnd]
   ]
 
 resolveConflict :: Conflict -> Maybe String
 resolveConflict Conflict{..}
-  | _linesA == _linesBase = Just $ unlines _linesB
-  | _linesB == _linesBase = Just $ unlines _linesA
-  | _linesA == _linesB = Just $ unlines _linesA
+  | cLinesA == cLinesBase = Just $ unlines cLinesB
+  | cLinesB == cLinesBase = Just $ unlines cLinesA
+  | cLinesA == cLinesB = Just $ unlines cLinesA
   | otherwise = Nothing
 
 breakUpToMarker :: MonadState [(LineNo, String)] m => Char -> m [(LineNo, String)]
@@ -67,20 +66,19 @@ readUpToMarker c =
     mHead <- readHead
     return (ls, mHead)
 
-parseConflict :: MonadState [(LineNo, String)] m => LineNo -> String -> m Conflict
-parseConflict lineNo markerA = do
-  (linesA   , Just (_, markerBase)) <- readUpToMarker '|'
-  (linesBase, Just (_, markerB)) <- readUpToMarker '='
-  (linesB   , Just (_, markerEnd)) <- readUpToMarker '>'
+parseConflict :: MonadState [(LineNo, String)] m => (LineNo, String) -> m Conflict
+parseConflict markerA = do
+  (linesA   , Just markerBase) <- readUpToMarker '|'
+  (linesBase, Just markerB)     <- readUpToMarker '='
+  (linesB   , Just markerEnd)  <- readUpToMarker '>'
   return Conflict
-    { _lineNo     = lineNo
-    , _markerA    = markerA
-    , _markerBase = markerBase
-    , _markerB    = markerB
-    , _markerEnd  = markerEnd
-    , _linesA     = map snd linesA
-    , _linesB     = map snd linesB
-    , _linesBase  = map snd linesBase
+    { cMarkerA    = markerA
+    , cMarkerBase = markerBase
+    , cMarkerB    = markerB
+    , cMarkerEnd  = markerEnd
+    , cLinesA     = map snd linesA
+    , cLinesB     = map snd linesB
+    , cLinesBase  = map snd linesBase
     }
 
 parseConflicts :: String -> [Either String Conflict]
@@ -93,9 +91,9 @@ parseConflicts input =
         tell $ map (Left . snd) ls
         case mMarkerA of
           Nothing -> return ()
-          Just (lineNo, markerA) ->
+          Just markerA ->
             do
-              tell . return . Right =<< parseConflict lineNo markerA
+              tell . return . Right =<< parseConflict markerA
               loop
 
 type SideDiff = (Side, LineNo, [Diff String])
@@ -109,8 +107,8 @@ data NewContent = NewContent
 
 getConflictDiffs :: Conflict -> [SideDiff]
 getConflictDiffs Conflict{..} =
-    [ (A, _lineNo, getDiff _linesBase _linesA) | not (null _linesA) ] ++
-    [ (B, _lineNo, getDiff _linesBase _linesB) | not (null _linesB) ]
+    [ (A, fst cMarkerA, getDiff cLinesBase cLinesA) | not (null cLinesA) ] ++
+    [ (B, fst cMarkerB, getDiff cLinesBase cLinesB) | not (null cLinesB) ]
 
 resolveContent :: [Either String Conflict] -> NewContent
 resolveContent = asResult . mconcat . map go
