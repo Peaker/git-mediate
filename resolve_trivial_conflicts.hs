@@ -96,7 +96,7 @@ parseConflicts input =
               tell . return . Right =<< parseConflict markerA
               loop
 
-type SideDiff = (Side, LineNo, [Diff String])
+type SideDiff = (Side, (LineNo, String), [Diff String])
 
 data NewContent = NewContent
   { _resolvedSuccessfully :: Int
@@ -107,8 +107,8 @@ data NewContent = NewContent
 
 getConflictDiffs :: Conflict -> [SideDiff]
 getConflictDiffs Conflict{..} =
-    [ (A, fst cMarkerA, getDiff cLinesBase cLinesA) | not (null cLinesA) ] ++
-    [ (B, fst cMarkerB, getDiff cLinesBase cLinesB) | not (null cLinesB) ]
+    [ (A, cMarkerA, getDiff cLinesBase cLinesA) | not (null cLinesA) ] ++
+    [ (B, (fst cMarkerB, snd cMarkerEnd), getDiff cLinesBase cLinesB) | not (null cLinesB) ]
 
 resolveContent :: [Either String Conflict] -> NewContent
 resolveContent = asResult . mconcat . map go
@@ -189,9 +189,10 @@ dumpDiffs colorEnable opts filePath diffs
   | shouldDumpDiffs opts = mapM_ dumpDiff diffs
   | otherwise = return ()
   where
-    dumpDiff (side, lineNo, diff) =
+    dumpDiff (side, (lineNo, marker), diff) =
       do
-        putStrLn $ filePath ++ ":" ++ show lineNo ++ ":Diff" ++ show side
+        putStrLn $ concat
+            [filePath, ":", show lineNo, ":Diff", show side, ": ", marker]
         putStr $ unlines $ map (ppDiff colorEnable) diff
 
 dumpAndOpenEditor :: ColorEnable -> Options -> FilePath -> [SideDiff] -> IO ()

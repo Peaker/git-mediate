@@ -15,4 +15,4 @@ wrap EnableColor color str = setSGRCode [SetColor Foreground Vivid color] ++ str
 ppDiff :: ColorEnable -> Diff String -> String
 ppDiff c (First x)  = wrap c Red   $ '-':x
 ppDiff c (Second x) = wrap c Green $ '+':x
-ppDiff c (Both x _) =              ' ':x
+ppDiff c (Both x _) =                ' ':x
