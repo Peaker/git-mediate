@@ -1,5 +1,6 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE FlexibleContexts, RecordWildCards #-}
+module Main (main) where
 
 import           Control.Applicative ((<$>))
 import qualified Control.Exception as E
