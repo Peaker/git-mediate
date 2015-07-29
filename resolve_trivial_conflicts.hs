@@ -1,8 +1,10 @@
 {-# OPTIONS -O2 -Wall #-}
-{-# LANGUAGE FlexibleContexts, RecordWildCards #-}
+{-# LANGUAGE NoImplicitPrelude, FlexibleContexts, RecordWildCards #-}
 module Main (main) where
 
-import           Control.Applicative ((<$>))
+import           Prelude.Compat
+
+import           Control.Applicative (liftA2, (<|>))
 import qualified Control.Exception as E
 import           Control.Monad (when, unless)
 import           Control.Monad.State (MonadState, state, evalStateT)
@@ -10,7 +12,6 @@ import           Control.Monad.Writer (runWriter, tell)
 import           Data.Algorithm.Diff (Diff, getDiff)
 import           Data.List (isPrefixOf, isSuffixOf)
 import           Data.Maybe (mapMaybe)
-import           Data.Monoid (Monoid(..))
 import qualified Data.Monoid as Monoid
 import           PPDiff (ppDiff, ColorEnable(..))
 import           System.Directory (renameFile, removeFile, getCurrentDirectory)
@@ -310,7 +311,7 @@ main =
       let stdin = ""
       statusPorcelain <- readProcess "git" ["status", "--porcelain"] stdin
       let rootRelativeFileNames =
-              mapMaybe (unprefix "UU ") $ lines statusPorcelain
+              mapMaybe (liftA2 (<|>) (unprefix "UU ") (unprefix "AA ")) $ lines statusPorcelain
       cwd <- getCurrentDirectory
       rootDir <-
           relativePath cwd . stripNewline <$>
