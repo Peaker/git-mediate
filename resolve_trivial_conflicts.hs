@@ -6,7 +6,7 @@ import           Prelude.Compat
 
 import           Control.Applicative (liftA2, (<|>))
 import qualified Control.Exception as E
-import           Control.Monad (when, unless)
+import           Control.Monad (when, unless, filterM)
 import           Control.Monad.State (MonadState, state, evalStateT)
 import           Control.Monad.Writer (runWriter, tell)
 import           Data.Algorithm.Diff (Diff, getDiff)
@@ -20,6 +20,7 @@ import           System.Exit (ExitCode(..))
 import           System.FilePath ((<.>), makeRelative, joinPath, splitPath)
 import qualified System.FilePath as FilePath
 import           System.Posix.IO (stdOutput)
+import           System.Posix.Files (isDirectory, getFileStatus)
 import           System.Posix.Terminal (queryTerminal)
 import           System.Process (callProcess, readProcess, readProcessWithExitCode)
 
@@ -231,7 +232,7 @@ resolve colorEnable opts fileName =
               else doDump
         where
           doDump =
-            dumpAndOpenEditor colorEnable opts fileName $
+            dumpAndOpenEditor colorEnable opts fileName
                 [ cDiff
                 | Right conflict <- parseConflicts newContent
                 , cDiff <- getConflictDiffs conflict
@@ -310,11 +311,13 @@ main =
       checkConflictStyle opts
       let stdin = ""
       statusPorcelain <- readProcess "git" ["status", "--porcelain"] stdin
-      let rootRelativeFileNames =
-              mapMaybe (liftA2 (<|>) (unprefix "UU ") (unprefix "AA ")) $ lines statusPorcelain
       cwd <- getCurrentDirectory
       rootDir <-
           relativePath cwd . stripNewline <$>
           readProcess "git" ["rev-parse", "--show-toplevel"] stdin
-      mapM_ (resolve colorEnable opts .
-             (rootDir </>)) rootRelativeFileNames
+      rootRelativeFileNames <-
+          filterM (\x -> (not . isDirectory) <$> getFileStatus x)
+          . map (rootDir </>)
+          . mapMaybe (liftA2 (<|>) (unprefix "UU ") (unprefix "AA "))
+          $ lines statusPorcelain
+      mapM_ (resolve colorEnable opts) rootRelativeFileNames
