@@ -232,7 +232,7 @@ resolve colorEnable opts fileName =
               else doDump
         where
           doDump =
-            dumpAndOpenEditor colorEnable opts fileName $
+            dumpAndOpenEditor colorEnable opts fileName
                 [ cDiff
                 | Right conflict <- parseConflicts newContent
                 , cDiff <- getConflictDiffs conflict
