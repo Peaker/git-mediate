@@ -70,18 +70,30 @@ readHead = state f
     f [] = (Nothing, [])
     f (l:ls) = (Just l, ls)
 
-readUpToMarker :: MonadState [(LineNo, String)] m => Char -> m ([(LineNo, String)], Maybe (LineNo, String))
-readUpToMarker c =
+tryReadUpToMarker :: MonadState [(LineNo, String)] m => Char -> m ([(LineNo, String)], Maybe (LineNo, String))
+tryReadUpToMarker c =
   do
     ls <- breakUpToMarker c
     mHead <- readHead
     return (ls, mHead)
 
+readUpToMarker :: MonadState [(LineNo, String)] m => Char -> m ([(LineNo, String)], (LineNo, String))
+readUpToMarker c = do
+  res <- tryReadUpToMarker c
+  case res of
+    (ls, Just h)  -> return $ (ls, h)
+    (ls, Nothing) ->
+      error $ concat
+      [ "Parse error: failed reading up to marker: "
+      , show c, ", got:"
+      , concatMap (\(l,s) -> "\n" ++ show l ++ "\t" ++ s) $ take 5 ls
+      ]
+
 parseConflict :: MonadState [(LineNo, String)] m => (LineNo, String) -> m Conflict
 parseConflict markerA = do
-  (linesA   , Just markerBase) <- readUpToMarker '|'
-  (linesBase, Just markerB)    <- readUpToMarker '='
-  (linesB   , Just markerEnd)  <- readUpToMarker '>'
+  (linesA   , markerBase) <- readUpToMarker '|'
+  (linesBase, markerB)    <- readUpToMarker '='
+  (linesB   , markerEnd)  <- readUpToMarker '>'
   return Conflict
     { cMarkerA    = markerA
     , cMarkerBase = markerBase
@@ -98,7 +110,7 @@ parseConflicts input =
   where
     loop =
       do
-        (ls, mMarkerA) <- readUpToMarker '<'
+        (ls, mMarkerA) <- tryReadUpToMarker '<'
         tell $ map (Left . snd) ls
         case mMarkerA of
           Nothing -> return ()
