@@ -5,3 +5,5 @@
 *.p_o
 *.dyn_hi
 *.dyn_o
+*.i_o
+*.i_hi
