@@ -7,7 +7,7 @@ import           Control.Monad (when, unless, filterM)
 import           Control.Monad.State (MonadState, state, evalStateT)
 import           Control.Monad.Writer (runWriter, tell)
 import           Data.Algorithm.Diff (Diff, getDiff)
-import           Data.Foldable (asum)
+import           Data.Foldable (asum, traverse_)
 import           Data.List (isPrefixOf, isSuffixOf)
 import           Data.Maybe (mapMaybe)
 import qualified Data.Monoid as Monoid
@@ -54,8 +54,15 @@ resolveConflict Conflict{..}
   | cLinesA == cLinesB = Just $ unlines cLinesA
   | otherwise = Nothing
 
+-- '>' -> ">>>>>>> "
+markerPrefix :: Char -> String
+markerPrefix c = replicate 7 c ++ " "
+
+markerLine :: Char -> String -> String
+markerLine c str = markerPrefix c ++ str ++ "\n"
+
 breakUpToMarker :: MonadState [(LineNo, String)] m => Char -> m [(LineNo, String)]
-breakUpToMarker c = state (break ((replicate 7 c `isPrefixOf`) . snd))
+breakUpToMarker c = state (break ((markerPrefix c `isPrefixOf`) . snd))
 
 readHead :: MonadState [a] m => m (Maybe a)
 readHead = state f
@@ -73,7 +80,7 @@ readUpToMarker c =
 parseConflict :: MonadState [(LineNo, String)] m => (LineNo, String) -> m Conflict
 parseConflict markerA = do
   (linesA   , Just markerBase) <- readUpToMarker '|'
-  (linesBase, Just markerB)     <- readUpToMarker '='
+  (linesBase, Just markerB)    <- readUpToMarker '='
   (linesB   , Just markerEnd)  <- readUpToMarker '>'
   return Conflict
     { cMarkerA    = markerA
@@ -201,6 +208,15 @@ dumpAndOpenEditor colorEnable opts path diffs =
     dumpDiffs colorEnable opts path diffs
     openEditor opts path
 
+overwrite :: FilePath -> String -> IO ()
+overwrite fileName newContent =
+    do
+        renameFile fileName bkup
+        writeFile fileName newContent
+        removeFile bkup
+    where
+        bkup = fileName <.> "bk"
+
 resolve :: ColorEnable -> Options -> FilePath -> IO ()
 resolve colorEnable opts fileName =
   do
@@ -223,10 +239,7 @@ resolve colorEnable opts fileName =
               , " conflicts (failed to resolve " ++ show failures ++ " conflicts)"
               , if failures == 0 then ", git adding" else ""
               ]
-            let bkup = fileName <.> "bk"
-            renameFile fileName bkup
-            writeFile fileName newContent
-            removeFile bkup
+            overwrite fileName newContent
             if failures == 0
               then gitAdd fileName
               else doDump
@@ -304,6 +317,65 @@ d </> p = d FilePath.</> p
 isDirectory :: FilePath -> IO Bool
 isDirectory x = PosixFiles.isDirectory <$> PosixFiles.getFileStatus x
 
+ensureNewline :: String -> String
+ensureNewline "" = ""
+ensureNewline str = str ++ suffix
+    where
+        suffix
+            | "\n" `isSuffixOf` str = ""
+            | otherwise = "\n"
+
+withAllStageFiles ::
+    FilePath -> (FilePath -> Maybe FilePath -> Maybe FilePath -> IO b) -> IO b
+withAllStageFiles path action =
+    do
+        let stdin = ""
+        [baseTmp, localTmp, remoteTmp] <-
+            take 3 . words <$>
+            readProcess "git" ["checkout-index", "--stage=all", "--", path] stdin
+        let maybePath "." = Nothing
+            maybePath p = Just p
+        let mLocalTmp = maybePath localTmp
+            mRemoteTmp = maybePath remoteTmp
+        action baseTmp mLocalTmp mRemoteTmp
+            `E.finally`
+            do
+                removeFile baseTmp
+                traverse_ removeFile mLocalTmp
+                traverse_ removeFile mRemoteTmp
+
+deleteModifyConflictAddMarkers :: FilePath -> IO ()
+deleteModifyConflictAddMarkers path =
+    withAllStageFiles path $ \baseTmp mLocalTmp mRemoteTmp ->
+    do
+        baseContent <- readFile baseTmp
+        localContent <- maybe (return "") readFile mLocalTmp
+        remoteContent <- maybe (return "") readFile mRemoteTmp
+        overwrite path $
+            concat
+            [ markerLine '<' "LOCAL"
+            , ensureNewline localContent
+            , markerLine '|' "BASE"
+            , ensureNewline baseContent
+            , markerLine '=' ""
+            , ensureNewline remoteContent
+            , markerLine '>' "REMOTE"
+            ]
+
+deleteModifyConflictHandle :: FilePath -> IO ()
+deleteModifyConflictHandle path =
+    do  notMarked <- null . filter (markerPrefix '<' `isPrefixOf`) . lines <$> readFile path
+        when notMarked $
+            do  putStrLn $ show path ++ " has a delete/modify conflict. Adding conflict markers"
+                deleteModifyConflictAddMarkers path
+
+removeFileIfEmpty :: FilePath -> IO ()
+removeFileIfEmpty path =
+    do  isEmpty <- null <$> readFile path
+        when isEmpty $
+            do  removeFile path
+                callProcess "git" ["add", "-u", "--", path]
+
 main :: IO ()
 main =
   do  opts <- getOpts =<< getArgs
@@ -327,5 +399,19 @@ main =
           filesMatchingPrefixes prefixes =
               rootRelativeFiles . mapMaybe (firstMatchingPrefix prefixes)
               $ lines statusPorcelain
-      rootRelativeFileNames <- filesMatchingPrefixes ["UU ", "AA ", "DA ", "AD "]
-      mapM_ (resolve colorEnable opts) rootRelativeFileNames
+
+-- from git-diff manpage:
+-- Added (A), Copied (C), Deleted (D), Modified (M), Renamed (R),
+-- have their type (i.e. regular file, symlink, submodule, ...) changed (T),
+-- are Unmerged (U), are Unknown (X), or have had their pairing Broken (B)
+
+      deleteModifyConflicts <- filesMatchingPrefixes ["DU ", "UD "]
+
+      mapM_ deleteModifyConflictHandle deleteModifyConflicts
+
+      filesMatchingPrefixes ["UU ", "AA ", "DA ", "AD ", "DU ", "UD "]
+          >>= mapM_ (resolve colorEnable opts)
+
+      -- Heuristically delete files that were remove/modify conflict
+      -- and ended up with empty content
+      mapM_ removeFileIfEmpty deleteModifyConflicts
