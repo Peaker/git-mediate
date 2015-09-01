@@ -2,14 +2,12 @@
 {-# LANGUAGE NoImplicitPrelude, FlexibleContexts, RecordWildCards #-}
 module Main (main) where
 
-import           Prelude.Compat
-
-import           Control.Applicative (liftA2, (<|>))
 import qualified Control.Exception as E
 import           Control.Monad (when, unless, filterM)
 import           Control.Monad.State (MonadState, state, evalStateT)
 import           Control.Monad.Writer (runWriter, tell)
 import           Data.Algorithm.Diff (Diff, getDiff)
+import           Data.Foldable (asum)
 import           Data.List (isPrefixOf, isSuffixOf)
 import           Data.Maybe (mapMaybe)
 import qualified Data.Monoid as Monoid
@@ -19,10 +17,12 @@ import           System.Environment (getProgName, getArgs, getEnv)
 import           System.Exit (ExitCode(..))
 import           System.FilePath ((<.>), makeRelative, joinPath, splitPath)
 import qualified System.FilePath as FilePath
-import           System.Posix.IO (stdOutput)
 import qualified System.Posix.Files as PosixFiles
+import           System.Posix.IO (stdOutput)
 import           System.Posix.Terminal (queryTerminal)
 import           System.Process (callProcess, readProcess, readProcessWithExitCode)
+
+import           Prelude.Compat
 
 data Side = A | B
   deriving (Eq, Ord, Show)
@@ -320,8 +320,12 @@ main =
           readProcess "git" ["rev-parse", "--show-toplevel"] stdin
       let rootRelativeFiles =
               filterM (fmap not . isDirectory) . map (rootDir </>)
-      rootRelativeFileNames <-
-          rootRelativeFiles .
-          mapMaybe (liftA2 (<|>) (unprefix "UU ") (unprefix "AA "))
-          $ lines statusPorcelain
+      let firstMatchingPrefix :: [String] -> String -> Maybe String
+          firstMatchingPrefix prefixes =
+              asum . traverse unprefix prefixes
+      let filesMatchingPrefixes :: [String] -> IO [FilePath]
+          filesMatchingPrefixes prefixes =
+              rootRelativeFiles . mapMaybe (firstMatchingPrefix prefixes)
+              $ lines statusPorcelain
+      rootRelativeFileNames <- filesMatchingPrefixes ["UU ", "AA ", "DA ", "AD "]
       mapM_ (resolve colorEnable opts) rootRelativeFileNames
