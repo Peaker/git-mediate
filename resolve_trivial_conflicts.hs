@@ -56,10 +56,10 @@ resolveConflict Conflict{..}
 
 -- '>' -> ">>>>>>> "
 markerPrefix :: Char -> String
-markerPrefix c = replicate 7 c ++ " "
+markerPrefix c = replicate 7 c
 
 markerLine :: Char -> String -> String
-markerLine c str = markerPrefix c ++ str ++ "\n"
+markerLine c str = markerPrefix c ++ " " ++ str ++ "\n"
 
 breakUpToMarker :: MonadState [(LineNo, String)] m => Char -> m [(LineNo, String)]
 breakUpToMarker c = state (break ((markerPrefix c `isPrefixOf`) . snd))
