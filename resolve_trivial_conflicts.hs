@@ -20,7 +20,7 @@ import           System.Exit (ExitCode(..))
 import           System.FilePath ((<.>), makeRelative, joinPath, splitPath)
 import qualified System.FilePath as FilePath
 import           System.Posix.IO (stdOutput)
-import           System.Posix.Files (isDirectory, getFileStatus)
+import qualified System.Posix.Files as PosixFiles
 import           System.Posix.Terminal (queryTerminal)
 import           System.Process (callProcess, readProcess, readProcessWithExitCode)
 
@@ -301,6 +301,9 @@ relativePath base path
 "." </> p = p
 d </> p = d FilePath.</> p
 
+isDirectory :: FilePath -> IO Bool
+isDirectory x = PosixFiles.isDirectory <$> PosixFiles.getFileStatus x
+
 main :: IO ()
 main =
   do  opts <- getOpts =<< getArgs
@@ -315,9 +318,10 @@ main =
       rootDir <-
           relativePath cwd . stripNewline <$>
           readProcess "git" ["rev-parse", "--show-toplevel"] stdin
+      let rootRelativeFiles =
+              filterM (fmap not . isDirectory) . map (rootDir </>)
       rootRelativeFileNames <-
-          filterM (\x -> (not . isDirectory) <$> getFileStatus x)
-          . map (rootDir </>)
-          . mapMaybe (liftA2 (<|>) (unprefix "UU ") (unprefix "AA "))
+          rootRelativeFiles .
+          mapMaybe (liftA2 (<|>) (unprefix "UU ") (unprefix "AA "))
           $ lines statusPorcelain
       mapM_ (resolve colorEnable opts) rootRelativeFileNames
