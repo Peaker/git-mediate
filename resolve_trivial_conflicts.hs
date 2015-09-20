@@ -1,5 +1,5 @@
 {-# OPTIONS -O2 -Wall #-}
-{-# LANGUAGE NoImplicitPrelude, FlexibleContexts, RecordWildCards #-}
+{-# LANGUAGE NoImplicitPrelude, FlexibleContexts, RecordWildCards, LambdaCase #-}
 module Main (main) where
 
 import qualified Control.Exception as E
@@ -225,34 +225,34 @@ overwrite fileName newContent =
 
 resolve :: ColorEnable -> Options -> FilePath -> IO ()
 resolve colorEnable opts fileName =
-    do  content <- parseConflicts <$> readFile fileName
-        case resolveContent content of
-            NewContent successes failures newContent
-                | successes == 0 && failures == 0 ->
-                  do  putStrLn $ fileName ++ ": No conflicts, git-adding"
-                      gitAdd fileName
-                | successes == 0 ->
-                  do  putStrLn $ concat
-                          [ fileName, ": Failed to resolve any of the "
-                          , show failures, " conflicts" ]
-                      doDump
-                | otherwise ->
-                  do  putStrLn $ concat
-                          [ fileName, ": Successfully resolved ", show successes
-                          , " conflicts (failed to resolve " ++ show failures ++ " conflicts)"
-                          , if failures == 0 then ", git adding" else ""
-                          ]
-                      overwrite fileName newContent
-                      if failures == 0
-                          then gitAdd fileName
-                          else doDump
-                where
-                    doDump =
-                        dumpAndOpenEditor colorEnable opts fileName
-                        [ cDiff
-                        | Right conflict <- parseConflicts newContent
-                        , cDiff <- getConflictDiffs conflict
-                        ]
+    resolveContent . parseConflicts <$> readFile fileName
+    >>= \case
+    NewContent successes failures newContent
+        | successes == 0 && failures == 0 ->
+          do  putStrLn $ fileName ++ ": No conflicts, git-adding"
+              gitAdd fileName
+        | successes == 0 ->
+          do  putStrLn $ concat
+                  [ fileName, ": Failed to resolve any of the "
+                  , show failures, " conflicts" ]
+              doDump
+        | otherwise ->
+          do  putStrLn $ concat
+                  [ fileName, ": Successfully resolved ", show successes
+                  , " conflicts (failed to resolve " ++ show failures ++ " conflicts)"
+                  , if failures == 0 then ", git adding" else ""
+                  ]
+              overwrite fileName newContent
+              if failures == 0
+                  then gitAdd fileName
+                  else doDump
+        where
+            doDump =
+                dumpAndOpenEditor colorEnable opts fileName
+                [ cDiff
+                | Right conflict <- parseConflicts newContent
+                , cDiff <- getConflictDiffs conflict
+                ]
 
 stripNewline :: String -> String
 stripNewline x
