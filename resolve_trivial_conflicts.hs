@@ -81,7 +81,7 @@ readUpToMarker :: MonadState [(LineNo, String)] m => Char -> m ([(LineNo, String
 readUpToMarker c = do
   res <- tryReadUpToMarker c
   case res of
-    (ls, Just h)  -> return $ (ls, h)
+    (ls, Just h)  -> return (ls, h)
     (ls, Nothing) ->
       error $ concat
       [ "Parse error: failed reading up to marker: "
