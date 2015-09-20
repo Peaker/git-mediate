@@ -56,7 +56,7 @@ resolveConflict Conflict{..}
 
 -- '>' -> ">>>>>>> "
 markerPrefix :: Char -> String
-markerPrefix c = replicate 7 c
+markerPrefix = replicate 7
 
 markerLine :: Char -> String -> String
 markerLine c str = markerPrefix c ++ " " ++ str ++ "\n"
@@ -364,8 +364,8 @@ deleteModifyConflictAddMarkers path =
 
 deleteModifyConflictHandle :: FilePath -> IO ()
 deleteModifyConflictHandle path =
-    do  notMarked <- null . filter (markerPrefix '<' `isPrefixOf`) . lines <$> readFile path
-        when notMarked $
+    do  marked <- any (markerPrefix '<' `isPrefixOf`) . lines <$> readFile path
+        unless marked $
             do  putStrLn $ show path ++ " has a delete/modify conflict. Adding conflict markers"
                 deleteModifyConflictAddMarkers path
 
