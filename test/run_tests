@@ -5,7 +5,11 @@ DIR="$( dirname "$0" )"
 
 export resolve_trivial_conflicts=../dist/build/resolve-trivial-conflicts/resolve-trivial-conflicts
 
-echo Spaces test && ${DIR}/spaces/test
-echo Config test && ${DIR}/config/test
+echo Spaces test
+${DIR}/spaces/test
+
+echo Config test
+${DIR}/config/test
+
 
 echo Tests successful
