@@ -13,6 +13,7 @@ import           PPDiff (ColorEnable(..))
 data Options = Options
     { shouldUseEditor :: Bool
     , shouldDumpDiffs :: Bool
+    , shouldDumpDiff2 :: Bool
     , shouldUseColor :: Maybe ColorEnable
     , shouldSetConflictStyle :: Bool
     }
@@ -27,6 +28,10 @@ parser =
     <*> O.switch
         ( O.long "diff" <> O.short 'd'
           <> O.help "Dump the left/right diffs from base in each conflict remaining"
+        )
+    <*> O.switch
+        ( O.long "diff2" <> O.short '2'
+          <> O.help "Dump the diff between left and right in each conflict remaining"
         )
     <*> ( O.flag' (Just EnableColor)
           (O.long "color" <> O.short 'c' <> O.help "Enable color")

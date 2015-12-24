@@ -129,8 +129,13 @@ data NewContent = NewContent
 
 getConflictDiffs :: Conflict -> [SideDiff]
 getConflictDiffs Conflict{..} =
-    [ (A, cMarkerA, getDiff cLinesBase cLinesA) | not (null cLinesA) ] ++
-    [ (B, (fst cMarkerB, snd cMarkerEnd), getDiff cLinesBase cLinesB) | not (null cLinesB) ]
+    [ (A, cMarkerA, getDiff cLinesBase cLinesA)
+    | not (null cLinesA) ] ++
+    [ (B, (fst cMarkerB, snd cMarkerEnd), getDiff cLinesBase cLinesB)
+    | not (null cLinesB) ]
+
+getConflictDiff2s :: Conflict -> ((LineNo, String), (LineNo, String), [Diff String])
+getConflictDiff2s Conflict{..} = (cMarkerA, cMarkerB, getDiff cLinesA cLinesB)
 
 resolveContent :: [Either String Conflict] -> NewContent
 resolveContent = asResult . mconcat . map go
@@ -158,19 +163,24 @@ openEditor opts path
             callProcess editor [path]
     | otherwise = return ()
 
-dumpDiffs :: ColorEnable -> Options -> FilePath -> [SideDiff] -> IO ()
-dumpDiffs colorEnable opts filePath diffs
-    | shouldDumpDiffs opts = mapM_ dumpDiff diffs
-    | otherwise = return ()
+dumpDiffs :: ColorEnable -> Options -> FilePath -> [Conflict] -> IO ()
+dumpDiffs colorEnable opts filePath conflicts =
+    do
+        when (shouldDumpDiffs opts) $ mapM_ dumpDiff $ concatMap getConflictDiffs conflicts
+        when (shouldDumpDiff2 opts) $ mapM_ dumpDiff2 $ map getConflictDiff2s conflicts
     where
         dumpDiff (side, (lineNo, marker), diff) =
             do  putStrLn $ concat
                     [filePath, ":", show lineNo, ":Diff", show side, ": ", marker]
                 putStr $ unlines $ map (ppDiff colorEnable) diff
+        dumpDiff2 ((lineNoA, markerA), (lineNoB, markerB), diff) =
+            do  putStrLn $ concat [filePath, ":", show lineNoA, " <->", markerA]
+                putStrLn $ concat [filePath, ":", show lineNoB, ": ", markerB]
+                putStr $ unlines $ map (ppDiff colorEnable) diff
 
-dumpAndOpenEditor :: ColorEnable -> Options -> FilePath -> [SideDiff] -> IO ()
-dumpAndOpenEditor colorEnable opts path diffs =
-    do  dumpDiffs colorEnable opts path diffs
+dumpAndOpenEditor :: ColorEnable -> Options -> FilePath -> [Conflict] -> IO ()
+dumpAndOpenEditor colorEnable opts path conflicts =
+    do  dumpDiffs colorEnable opts path conflicts
         openEditor opts path
 
 overwrite :: FilePath -> String -> IO ()
@@ -207,10 +217,7 @@ resolve colorEnable opts fileName =
         where
             doDump =
                 dumpAndOpenEditor colorEnable opts fileName
-                [ cDiff
-                | Right conflict <- parseConflicts newContent
-                , cDiff <- getConflictDiffs conflict
-                ]
+                [ conflict | Right conflict <- parseConflicts newContent ]
 
 stripNewline :: String -> String
 stripNewline x
