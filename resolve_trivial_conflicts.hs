@@ -11,9 +11,11 @@ import           Data.Foldable (asum, traverse_)
 import           Data.List (isPrefixOf, isSuffixOf)
 import           Data.Maybe (mapMaybe)
 import qualified Data.Monoid as Monoid
+import qualified Opts
+import           Opts (Options(..))
 import           PPDiff (ppDiff, ColorEnable(..))
 import           System.Directory (renameFile, removeFile, getCurrentDirectory)
-import           System.Environment (getProgName, getArgs, getEnv)
+import           System.Environment (getEnv)
 import           System.Exit (ExitCode(..))
 import           System.FilePath ((<.>), makeRelative, joinPath, splitPath)
 import qualified System.FilePath as FilePath
@@ -148,50 +150,6 @@ resolveContent = asResult . mconcat . map go
 gitAdd :: FilePath -> IO ()
 gitAdd fileName =
     callProcess "git" ["add", "--", fileName]
-
-data Options = Options
-    { shouldUseEditor :: Bool
-    , shouldDumpDiffs :: Bool
-    , shouldUseColor :: Maybe ColorEnable
-    , shouldSetConflictStyle :: Bool
-    }
-instance Monoid Options where
-    mempty = Options False False Nothing False
-    Options oe0 od0 oc0 os0 `mappend` Options oe1 od1 oc1 os1 =
-        Options
-        (combineBool oe0 oe1 "-e")
-        (combineBool od0 od1 "-d")
-        (combineMaybe oc0 oc1 "-c or -C")
-        (os0 || os1)
-        where
-            err flag = error $ "Multiple " ++ flag ++ " flags used"
-            combineMaybe (Just _) (Just _) flag = err flag
-            combineMaybe Nothing Nothing _ = Nothing
-            combineMaybe (Just x) Nothing _ = Just x
-            combineMaybe Nothing (Just y) _ = Just y
-            combineBool True True flag = err flag
-            combineBool x y _ = x || y
-
-getOpts :: [String] -> IO Options
-getOpts = fmap mconcat . mapM parseArg
-    where
-        parseArg "-e" = return mempty { shouldUseEditor = True }
-        parseArg "-d" = return mempty { shouldDumpDiffs = True }
-        parseArg "-c" = return mempty { shouldUseColor = Just EnableColor }
-        parseArg "-C" = return mempty { shouldUseColor = Just DisableColor }
-        parseArg "-s" = return mempty { shouldSetConflictStyle = True }
-        parseArg arg =
-            do  prog <- getProgName
-                putStr $ unlines
-                    [ "Usage: " ++ prog ++ " [-e] [-d] [-c] [-C] [-s]"
-                    , ""
-                    , "-e    Execute $EDITOR for each conflicted file that remains conflicted"
-                    , "-d    Dump the left/right diffs from base in each conflict remaining"
-                    , "-c    Enable color"
-                    , "-C    Disable color"
-                    , "-s    Configure git's global merge.conflictstyle to diff3 if needed"
-                    ]
-                fail $ "Unknown argument: " ++ show arg
 
 openEditor :: Options -> FilePath -> IO ()
 openEditor opts path
@@ -378,7 +336,7 @@ removeFileIfEmpty path =
 
 main :: IO ()
 main =
-  do  opts <- getOpts =<< getArgs
+  do  opts <- Opts.getOpts
       colorEnable <-
           case shouldUseColor opts of
               Nothing -> shouldUseColorByTerminal
