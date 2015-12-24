@@ -297,13 +297,17 @@ withAllStageFiles ::
     FilePath -> (FilePath -> Maybe FilePath -> Maybe FilePath -> IO b) -> IO b
 withAllStageFiles path action =
     do  let stdin = ""
-        [baseTmp, localTmp, remoteTmp] <-
+        [baseTmpRaw, localTmpRaw, remoteTmpRaw] <-
             take 3 . words <$>
             readProcess "git" ["checkout-index", "--stage=all", "--", path] stdin
+        cdup <-
+            takeWhile (/= '\0') . stripNewline <$>
+            readProcess "git" ["rev-parse", "--show-cdup"] stdin
         let maybePath "." = Nothing
-            maybePath p = Just p
-        let mLocalTmp = maybePath localTmp
-            mRemoteTmp = maybePath remoteTmp
+            maybePath p = Just (cdup </> p)
+        let mLocalTmp = maybePath localTmpRaw
+            mRemoteTmp = maybePath remoteTmpRaw
+            baseTmp = cdup </> baseTmpRaw
         action baseTmp mLocalTmp mRemoteTmp
             `E.finally`
             do  removeFile baseTmp
