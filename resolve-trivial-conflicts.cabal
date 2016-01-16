@@ -2,7 +2,7 @@
 -- further documentation, see http://haskell.org/cabal/users-guide/
 
 name:                resolve-trivial-conflicts
-version:             0.3.2.1
+version:             0.3.2.2
 synopsis:            Remove trivial conflict markers in a git repository
 description:         Remove trivial conflict markers in a git repository
 homepage:            https://github.com/ElastiLotem/resolve-trivial-conflicts
