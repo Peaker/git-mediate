@@ -27,7 +27,7 @@ executable resolve-trivial-conflicts
   other-modules:       PPDiff, Opts
   -- other-extensions:
   build-depends:       base >=4.6 && <5
-                     , base-compat >= 0.8.2 && < 0.9
+                     , base-compat >= 0.8.2 && < 0.10
                      , mtl >=2.1
                      , directory >=1.2
                      , process >=1.2
