@@ -94,6 +94,7 @@ Clone it:
     cd resolve-trivial-conflicts
 
 Option #1: Build & install using stack: `stack install` (make sure you installed [haskell stack](http://docs.haskellstack.org/en/stable/README/))
+
 Option #2: Build & install using cabal: `cabal install` (make sure `~/.cabal/bin` is in your `$PATH`)
 
 # Use
