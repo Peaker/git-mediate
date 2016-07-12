@@ -81,13 +81,20 @@ file for you.
 
 # Installation
 
-First, make sure `~/.cabal/bin` is in your `$PATH`.
+## Recommended: Using stack directly
 
-```code
-git clone https://github.com/ElastiLotem/resolve-trivial-conflicts
-cd resolve-trivial-conflicts
-cabal install
-```
+1. Install [haskell stack](http://docs.haskellstack.org/en/stable/README/)
+2. Run: `stack install resolve-trivial-conflicts`
+
+## Alternative install: from sources
+
+Clone it:
+
+    git clone https://github.com/Peaker/resolve-trivial-conflicts
+    cd resolve-trivial-conflicts
+
+Option #1: Build & install using stack: `stack install` (make sure you installed [haskell stack](http://docs.haskellstack.org/en/stable/README/))
+Option #2: Build & install using cabal: `cabal install` (make sure `~/.cabal/bin` is in your `$PATH`)
 
 # Use
 
