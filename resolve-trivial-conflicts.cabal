@@ -22,8 +22,6 @@ source-repository head
 
 executable resolve-trivial-conflicts
   main-is:             resolve_trivial_conflicts.hs
-  ghc-options:         -rtsopts -Wall
-  ghc-prof-options:    -rtsopts -Wall -auto-all -caf-all
   other-modules:       PPDiff, Opts
   -- other-extensions:
   build-depends:       base >=4.6 && <5
