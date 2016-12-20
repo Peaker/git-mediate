@@ -18,6 +18,6 @@ git add 'a b'
 (git stash pop >/dev/null && exit 1) || echo "Conflict set up successfully"
 # Set up of conflict over
 
-../${resolve_trivial_conflicts}
+../${git_mediate}
 
 rm -rf .git 'a b'

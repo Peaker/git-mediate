@@ -65,7 +65,7 @@ BASE and complex changes here
 More unconflicted stuff here
 ```
 
-Now, you can run this little utility: resolve-trivial-conflicts, which will see
+Now, you can run this little utility: git-mediate, which will see
 the conflict has become trivial (only one side changed anything) and
 select that side appropriately.
 
@@ -76,7 +76,7 @@ used on it automatically.
 
 You might just resolve the conflicts manually and remove the merge markers from all of the conflicts.
 
-In such a case, just run resolve-trivial-conflicts, and it will "git add" the
+In such a case, just run git-mediate, and it will "git add" the
 file for you.
 
 # Installation
@@ -84,14 +84,14 @@ file for you.
 First, make sure `~/.cabal/bin` is in your `$PATH`.
 
 ```code
-git clone https://github.com/ElastiLotem/resolve-trivial-conflicts
-cd resolve-trivial-conflicts
+git clone https://github.com/ElastiLotem/git-mediate
+cd git-mediate
 cabal install
 ```
 
 # Use
 
-Call the resolve-trivial-conflicts from a git repository with conflicts.
+Call the git-mediate from a git repository with conflicts.
 
 # Additional features
 
@@ -103,4 +103,4 @@ You can use the `-e` flag to invoke your `$EDITOR` on every conflicted file that
 
 Sometimes, the conflict is just a giant block of incomprehensible text next to another giant block of incomprehensible text.
 
-You can use the `-d` flag to show the conflict in diff-from-base form. Then, you can manually apply the changes you see in both the base and whereever needed, and use resolve-trivial-conflicts again to make sure you've updated everything appropriately.
+You can use the `-d` flag to show the conflict in diff-from-base form. Then, you can manually apply the changes you see in both the base and whereever needed, and use git-mediate again to make sure you've updated everything appropriately.

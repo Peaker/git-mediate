@@ -51,8 +51,8 @@ opts =
     O.fullDesc
     <> O.progDesc
        "Resolve any git conflicts that have become trivial by editing operations.\n\
-       \Go to http://github.com/ElastiLotem/resolve-trivial-conflicts for example use."
-    <> O.header "resolve-trivial-conflicts - Become a conflicts hero"
+       \Go to http://github.com/Peaker/git-mediate for example use."
+    <> O.header "git-mediate - Become a conflicts hero"
 
 getOpts :: IO Options
 getOpts = O.execParser opts

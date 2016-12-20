@@ -3,7 +3,7 @@ set -u
 
 DIR="$( dirname "$0" )"
 
-export resolve_trivial_conflicts=../dist/build/resolve-trivial-conflicts/resolve-trivial-conflicts
+export git_mediate=../dist/build/git-mediate/git-mediate
 
 echo Spaces test
 ${DIR}/spaces/test
