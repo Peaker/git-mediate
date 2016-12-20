@@ -22,7 +22,7 @@ source-repository head
 
 executable git-mediate
   main-is:             git-mediate.hs
-  other-modules:       PPDiff, Opts
+  other-modules:       PPDiff, Opts, Version
   -- other-extensions:
   build-depends:       base >=4.6 && <5
                      , base-compat >= 0.8.2 && < 0.10
