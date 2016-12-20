@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 -- | Option parser
 
 module Opts
@@ -9,6 +10,8 @@ import           Control.Applicative (Alternative(..))
 import           Data.Monoid ((<>))
 import qualified Options.Applicative as O
 import           PPDiff (ColorEnable(..))
+import           System.Exit (exitSuccess)
+import           Version (versionString)
 
 data Options = Options
     { shouldUseEditor :: Bool
@@ -18,34 +21,39 @@ data Options = Options
     , shouldSetConflictStyle :: Bool
     }
 
-parser :: O.Parser Options
-parser =
-    Options
-    <$> O.switch
-        ( O.long "editor" <> O.short 'e'
-          <> O.help "Execute $EDITOR for each conflicted file that remains conflicted"
-        )
-    <*> O.switch
-        ( O.long "diff" <> O.short 'd'
-          <> O.help "Dump the left/right diffs from base in each conflict remaining"
-        )
-    <*> O.switch
-        ( O.long "diff2" <> O.short '2'
-          <> O.help "Dump the diff between left and right in each conflict remaining"
-        )
-    <*> ( O.flag' (Just EnableColor)
-          (O.long "color" <> O.short 'c' <> O.help "Enable color")
-          <|> O.flag' (Just DisableColor)
-              (O.long "no-color" <> O.short 'C' <> O.help "Disable color")
-          <|> pure Nothing
-        )
-    <*> ( O.switch
-          ( O.long "style" <> O.short 's'
-            <> O.help "Configure git's global merge.conflictstyle to diff3 if needed"
-          )
-        )
+data CmdArgs = CmdVersion | CmdOptions Options
 
-opts :: O.ParserInfo Options
+parser :: O.Parser CmdArgs
+parser =
+    O.flag' CmdVersion (O.long "version" <> O.help "Print the version and quit")
+    <|> CmdOptions
+        <$> ( Options
+            <$> O.switch
+                ( O.long "editor" <> O.short 'e'
+                  <> O.help "Execute $EDITOR for each conflicted file that remains conflicted"
+                )
+            <*> O.switch
+                ( O.long "diff" <> O.short 'd'
+                  <> O.help "Dump the left/right diffs from base in each conflict remaining"
+                )
+            <*> O.switch
+                ( O.long "diff2" <> O.short '2'
+                  <> O.help "Dump the diff between left and right in each conflict remaining"
+                )
+            <*> ( O.flag' (Just EnableColor)
+                  (O.long "color" <> O.short 'c' <> O.help "Enable color")
+                  <|> O.flag' (Just DisableColor)
+                      (O.long "no-color" <> O.short 'C' <> O.help "Disable color")
+                  <|> pure Nothing
+                )
+            <*> ( O.switch
+                  ( O.long "style" <> O.short 's'
+                    <> O.help "Configure git's global merge.conflictstyle to diff3 if needed"
+                  )
+                )
+            )
+
+opts :: O.ParserInfo CmdArgs
 opts =
     O.info (O.helper <*> parser) $
     O.fullDesc
@@ -55,5 +63,11 @@ opts =
     <> O.header "git-mediate - Become a conflicts hero"
 
 getOpts :: IO Options
-getOpts = O.execParser opts
-
+getOpts =
+    O.execParser opts
+    >>= \case
+    CmdVersion ->
+        do
+            putStrLn $ "git-mediate version " ++ versionString
+            exitSuccess
+    CmdOptions opts -> return opts
