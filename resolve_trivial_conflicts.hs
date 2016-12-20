@@ -40,21 +40,53 @@ data Conflict = Conflict
     , cLinesB     :: [String]
     } deriving (Show)
 
-prettyConflict :: Conflict -> String
-prettyConflict Conflict {..} =
-    unlines $ concat
+prettyConflictLines :: Conflict -> [String]
+prettyConflictLines Conflict {..} =
+    concat
     [ snd cMarkerA    : cLinesA
     , snd cMarkerBase : cLinesBase
     , snd cMarkerB    : cLinesB
     , [snd cMarkerEnd]
     ]
 
-resolveConflict :: Conflict -> Maybe String
-resolveConflict Conflict{..}
-    | cLinesA == cLinesBase = Just $ unlines cLinesB
-    | cLinesB == cLinesBase = Just $ unlines cLinesA
-    | cLinesA == cLinesB = Just $ unlines cLinesA
-    | otherwise = Nothing
+prettyConflict :: Conflict -> String
+prettyConflict = unlines . prettyConflictLines
+
+lengthOfCommonPrefix :: Eq a => [a] -> [a] -> Int
+lengthOfCommonPrefix x y = length $ takeWhile id $ zipWith (==) x y
+
+data Resolution
+    = NoResolution
+    | Resolution String
+    | PartialResolution String
+
+resolveConflict :: Conflict -> Resolution
+resolveConflict conflict@Conflict{..}
+    | cLinesA == cLinesBase = Resolution $ unlines cLinesB
+    | cLinesB == cLinesBase = Resolution $ unlines cLinesA
+    | cLinesA == cLinesB = Resolution $ unlines cLinesA
+    | matchTop > 0 || matchBottom > 0 =
+        PartialResolution $ unlines $
+        take matchTop cLinesBase ++
+        prettyConflictLines conflict
+        { cLinesA = unmatched cLinesA
+        , cLinesBase = unmatched cLinesBase
+        , cLinesB = unmatched cLinesB
+        } ++
+        takeEnd matchBottom cLinesBase
+    | otherwise = NoResolution
+    where
+        matchTop =
+            minimum $ map (lengthOfCommonPrefix cLinesBase) [cLinesA, cLinesB]
+        revBottom = reverse . drop matchTop
+        revBottomBase = revBottom cLinesBase
+        matchBottom =
+            minimum $
+            map (lengthOfCommonPrefix revBottomBase . revBottom)
+            [cLinesA, cLinesB]
+        dropEnd count xs = take (length xs - count) xs
+        takeEnd count xs = drop (length xs - count) xs
+        unmatched xs = drop matchTop $ dropEnd matchBottom xs
 
 -- '>' -> ">>>>>>> "
 markerPrefix :: Char -> String
@@ -123,6 +155,7 @@ type SideDiff = (Side, (LineNo, String), [Diff String])
 
 data NewContent = NewContent
     { _resolvedSuccessfully :: Int
+    , _reducedConflicts :: Int
     , _failedToResolve :: Int
     , _newContent :: String
     }
@@ -138,19 +171,22 @@ getConflictDiff2s :: Conflict -> ((LineNo, String), (LineNo, String), [Diff Stri
 getConflictDiff2s Conflict{..} = (cMarkerA, cMarkerB, getDiff cLinesA cLinesB)
 
 resolveContent :: [Either String Conflict] -> NewContent
-resolveContent = asResult . mconcat . map go
+resolveContent =
+    asResult . mconcat . map go
     where
-        asResult (Monoid.Sum successes, Monoid.Sum failures, newContent) =
+        asResult (Monoid.Sum successes, Monoid.Sum reductions, Monoid.Sum failures, newContent) =
             NewContent
             { _resolvedSuccessfully = successes
+            , _reducedConflicts = reductions
             , _failedToResolve = failures
             , _newContent = newContent
             }
-        go (Left line) = (Monoid.Sum 0, Monoid.Sum 0, unlines [line])
+        go (Left line) = (Monoid.Sum 0, Monoid.Sum 0, Monoid.Sum 0, unlines [line])
         go (Right conflict) =
             case resolveConflict conflict of
-            Nothing -> (Monoid.Sum 0, Monoid.Sum 1, prettyConflict conflict)
-            Just trivialLines -> (Monoid.Sum 1, Monoid.Sum 0, trivialLines)
+            NoResolution -> (Monoid.Sum 0, Monoid.Sum 0, Monoid.Sum 1, prettyConflict conflict)
+            Resolution trivialLines -> (Monoid.Sum 1, Monoid.Sum 0, Monoid.Sum 0, trivialLines)
+            PartialResolution newLines -> (Monoid.Sum 0, Monoid.Sum 1, Monoid.Sum 0, newLines)
 
 gitAdd :: FilePath -> IO ()
 gitAdd fileName =
@@ -195,26 +231,32 @@ resolve :: ColorEnable -> Options -> FilePath -> IO ()
 resolve colorEnable opts fileName =
     resolveContent . parseConflicts <$> readFile fileName
     >>= \case
-    NewContent successes failures newContent
-        | successes == 0 && failures == 0 ->
+    NewContent successes reductions failures newContent
+        | successes == 0 && allGood ->
           do  putStrLn $ fileName ++ ": No conflicts, git-adding"
               gitAdd fileName
-        | successes == 0 ->
+        | successes == 0 && reductions == 0 ->
           do  putStrLn $ concat
                   [ fileName, ": Failed to resolve any of the "
                   , show failures, " conflicts" ]
               doDump
+        | successes == 0 ->
+          do  putStrLn $ concat
+                  [ fileName, ": Reduced ", show reductions, " conflicts"]
+              overwrite fileName newContent
+              doDump
         | otherwise ->
           do  putStrLn $ concat
                   [ fileName, ": Successfully resolved ", show successes
-                  , " conflicts (failed to resolve " ++ show failures ++ " conflicts)"
-                  , if failures == 0 then ", git adding" else ""
+                  , " conflicts (failed to resolve " ++ show (reductions + failures) ++ " conflicts)"
+                  , if allGood then ", git adding" else ""
                   ]
               overwrite fileName newContent
-              if failures == 0
+              if allGood
                   then gitAdd fileName
                   else doDump
         where
+            allGood = failures == 0 && reductions == 0
             doDump =
                 dumpAndOpenEditor colorEnable opts fileName
                 [ conflict | Right conflict <- parseConflicts newContent ]
