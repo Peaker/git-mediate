@@ -88,7 +88,7 @@ resolveConflict conflict@Conflict{..}
         takeEnd count xs = drop (length xs - count) xs
         unmatched xs = drop matchTop $ dropEnd matchBottom xs
 
--- '>' -> ">>>>>>> "
+-- '>' -> ">>>>>>>"
 markerPrefix :: Char -> String
 markerPrefix = replicate 7
 
