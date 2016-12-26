@@ -2,10 +2,10 @@
 -- further documentation, see http://haskell.org/cabal/users-guide/
 
 name:                git-mediate
-version:             1.0
+version:             1.0.1
 synopsis:            Remove trivial conflict markers in a git repository
 description:         Remove trivial conflict markers in a git repository
-homepage:            https://github.com/ElastiLotem/git-mediate
+homepage:            https://github.com/Peaker/git-mediate
 license:             GPL-2
 license-file:        LICENSE
 author:              Eyal Lotem
@@ -18,7 +18,7 @@ cabal-version:       >=1.10
 
 source-repository head
   type: git
-  location: https://github.com/Elastilotem/git-mediate
+  location: https://github.com/Peaker/git-mediate
 
 executable git-mediate
   main-is:             git-mediate.hs
