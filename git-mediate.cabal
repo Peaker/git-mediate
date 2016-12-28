@@ -2,7 +2,7 @@
 -- further documentation, see http://haskell.org/cabal/users-guide/
 
 name:                git-mediate
-version:             1.0.1
+version:             1.0.2
 synopsis:            Remove trivial conflict markers in a git repository
 description:         Remove trivial conflict markers in a git repository
 homepage:            https://github.com/Peaker/git-mediate
