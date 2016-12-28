@@ -202,7 +202,7 @@ dumpDiffs :: ColorEnable -> Options -> FilePath -> [Conflict] -> IO ()
 dumpDiffs colorEnable opts filePath conflicts =
     do
         when (shouldDumpDiffs opts) $ mapM_ dumpDiff $ concatMap getConflictDiffs conflicts
-        when (shouldDumpDiff2 opts) $ mapM_ dumpDiff2 $ map getConflictDiff2s conflicts
+        when (shouldDumpDiff2 opts) $ mapM_ (dumpDiff2 . getConflictDiff2s) conflicts
     where
         dumpDiff (side, (lineNo, marker), diff) =
             do  putStrLn $ concat

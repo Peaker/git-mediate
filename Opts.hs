@@ -46,10 +46,9 @@ parser =
                       (O.long "no-color" <> O.short 'C' <> O.help "Disable color")
                   <|> pure Nothing
                 )
-            <*> ( O.switch
-                  ( O.long "style" <> O.short 's'
-                    <> O.help "Configure git's global merge.conflictstyle to diff3 if needed"
-                  )
+            <*> O.switch
+                ( O.long "style" <> O.short 's'
+                  <> O.help "Configure git's global merge.conflictstyle to diff3 if needed"
                 )
             )
 
@@ -70,4 +69,4 @@ getOpts =
         do
             putStrLn $ "git-mediate version " ++ versionString
             exitSuccess
-    CmdOptions opts -> return opts
+    CmdOptions o -> return o
