@@ -10,19 +10,17 @@ git config --global merge.conflictstyle diff3
 
 And then when you get a conflict, it looks like:
 
-```
-Unconflicted stuff
+    Unconflicted stuff
 
-<<<<<<< HEAD
-Version A changes
-|||||||
-Base version
-======= Version B
-Version B changes
->>>>>>>
+    <<<<<<< HEAD
+    Version A changes
+    |||||||
+    Base version
+    ======= Version B
+    Version B changes
+    >>>>>>>
 
-More unconflicted stuff here
-```
+    More unconflicted stuff here
 
 Then you are supposed to manually merge the useful changes in the top and bottom parts, relative to the base version.
 
@@ -30,40 +28,36 @@ A useful way to do this is to figure out which of the changes (Version A or Vers
 
 Perhaps one of the versions just added a small comment above the code section:
 
-```
-Unconflicted stuff
+    Unconflicted stuff
 
-<<<<<<< HEAD
-Added a comment here
-BASE
-|||||||
-BASE
-======= Version B
-BASE and complex changes here
->>>>>>>
+    <<<<<<< HEAD
+    Added a comment here
+    BASE
+    |||||||
+    BASE
+    ======= Version B
+    BASE and complex changes here
+    >>>>>>>
 
-More unconflicted stuff here
-```
+    More unconflicted stuff here
 
 One easy thing to do, mechanically, is to apply the simple change to
 the other 2 versions. Thus, it becomes:
 
-```
-Unconflicted stuff
+    Unconflicted stuff
 
-<<<<<<< HEAD
-Added a comment here
-BASE
-|||||||
-Added a comment here
-BASE
-======= Version B
-Added a comment here
-BASE and complex changes here
->>>>>>>
+    <<<<<<< HEAD
+    Added a comment here
+    BASE
+    |||||||
+    Added a comment here
+    BASE
+    ======= Version B
+    Added a comment here
+    BASE and complex changes here
+    >>>>>>>
 
-More unconflicted stuff here
-```
+    More unconflicted stuff here
 
 Now, you can run this little utility: git-mediate, which will see
 the conflict has become trivial (only one side changed anything) and
