@@ -75,13 +75,21 @@ file for you.
 
 # Installation
 
-First, make sure `~/.cabal/bin` is in your `$PATH`.
+## Recommended: Using haskell-stack
 
-```code
-git clone https://github.com/ElastiLotem/git-mediate
-cd git-mediate
-cabal install
-```
+1. Install [haskell stack](http://docs.haskellstack.org/en/stable/README/)
+2. Run: `stack install git-mediate`
+
+## Alternative install: from sources
+
+Clone it:
+
+    git clone https://github.com/Peaker/git-mediate
+    cd git-mediate
+
+Option #1: Build & install using stack: `stack install` (make sure you installed [haskell stack](http://docs.haskellstack.org/en/stable/README/))
+
+Option #2: Build & install using cabal: `cabal install` (make sure `~/.cabal/bin` is in your `$PATH`)
 
 # Use
 
