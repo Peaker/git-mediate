@@ -1,4 +1,3 @@
-{-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE NoImplicitPrelude, FlexibleContexts, RecordWildCards, LambdaCase #-}
 module Main (main) where
 
