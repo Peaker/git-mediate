@@ -24,7 +24,7 @@ executable git-mediate
   main-is:             git-mediate.hs
   other-modules:       PPDiff, Opts, Version
   -- other-extensions:
-  build-depends:       base >=4.6 && <5
+  build-depends:       base >=4.8 && <5
                      , base-compat >= 0.8.2 && < 0.10
                      , mtl >=2.1
                      , directory >=1.2
