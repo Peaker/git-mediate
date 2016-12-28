@@ -22,7 +22,14 @@ source-repository head
 
 executable git-mediate
   main-is:             git-mediate.hs
-  other-modules:       PPDiff, Opts, Version
+  other-modules:       Conflict
+                     , Environment
+                     , Opts
+                     , PPDiff
+                     , Resolution
+                     , SideDiff
+                     , StrUtils
+                     , Version
   ghc-options:         -O2 -Wall
   -- other-extensions:
   build-depends:       base >=4.8 && <5
