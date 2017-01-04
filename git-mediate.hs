@@ -17,10 +17,12 @@ import           Resolution (Resolution(..), resolveConflict)
 import           SideDiff (getConflictDiffs, getConflictDiff2s)
 import           StrUtils (ensureNewline, stripNewline, unprefix)
 import           System.Directory (renameFile, removeFile, getCurrentDirectory)
+import           System.Exit (ExitCode(..), exitWith)
 import           System.FilePath ((<.>), makeRelative, joinPath, splitPath)
 import qualified System.FilePath as FilePath
+import           System.IO (hPutStr, stderr)
 import qualified System.Posix.Files as PosixFiles
-import           System.Process (callProcess, readProcess)
+import           System.Process (callProcess, readProcess, readProcessWithExitCode)
 
 import           Prelude.Compat
 
@@ -187,6 +189,17 @@ removeFileIfEmpty path =
             do  removeFile path
                 callProcess "git" ["add", "-u", "--", path]
 
+getStatusPorcelain :: IO String
+getStatusPorcelain =
+    do  (statusCode, statusPorcelain, statusStderr) <-
+            readProcessWithExitCode "git" ["status", "--porcelain"] ""
+        when (statusCode /= ExitSuccess) $ do
+            -- Print git's error message. Usually -
+            -- "fatal: Not a git repository (or any of the parent directories): .git"
+            hPutStr stderr statusStderr
+            exitWith statusCode
+        return statusPorcelain
+
 main :: IO ()
 main =
   do  opts <- Opts.getOpts
@@ -195,12 +208,11 @@ main =
               Nothing -> shouldUseColorByTerminal
               Just colorEnable -> return colorEnable
       checkConflictStyle opts
-      let stdin = ""
-      statusPorcelain <- readProcess "git" ["status", "--porcelain"] stdin
+      statusPorcelain <- getStatusPorcelain
       cwd <- getCurrentDirectory
       rootDir <-
           relativePath cwd . stripNewline <$>
-          readProcess "git" ["rev-parse", "--show-toplevel"] stdin
+          readProcess "git" ["rev-parse", "--show-toplevel"] ""
       let rootRelativeFiles =
               filterM (fmap not . isDirectory) . map (rootDir </>)
       let firstMatchingPrefix :: [String] -> String -> Maybe String
