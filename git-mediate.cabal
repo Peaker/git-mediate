@@ -30,6 +30,7 @@ executable git-mediate
                      , SideDiff
                      , StrUtils
                      , Version
+                     , Paths_git_mediate
   ghc-options:         -O2 -Wall
   -- other-extensions:
   build-depends:       base >=4.8 && <5
