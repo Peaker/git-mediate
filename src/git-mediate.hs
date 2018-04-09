@@ -58,11 +58,12 @@ gitAdd :: FilePath -> IO ()
 gitAdd fileName =
     callProcess "git" ["add", "--", fileName]
 
-dumpDiffs :: ColorEnable -> Options -> FilePath -> [Conflict] -> IO ()
-dumpDiffs colorEnable opts filePath conflicts =
+dumpDiffs :: ColorEnable -> Options -> FilePath -> Int -> (Int, Conflict) -> IO ()
+dumpDiffs colorEnable opts filePath count (idx, conflict) =
     do
-        when (shouldDumpDiffs opts) $ mapM_ dumpDiff $ concatMap getConflictDiffs conflicts
-        when (shouldDumpDiff2 opts) $ mapM_ (dumpDiff2 . getConflictDiff2s) conflicts
+        putStrLn $ unwords ["### Conflict", show idx, "of", show count]
+        when (shouldDumpDiffs opts) $ mapM_ dumpDiff $ getConflictDiffs conflict
+        when (shouldDumpDiff2 opts) $ dumpDiff2 $ getConflictDiff2s conflict
     where
         dumpDiff (side, (lineNo, marker), diff) =
             do  putStrLn $ concat
@@ -75,7 +76,8 @@ dumpDiffs colorEnable opts filePath conflicts =
 
 dumpAndOpenEditor :: ColorEnable -> Options -> FilePath -> [Conflict] -> IO ()
 dumpAndOpenEditor colorEnable opts path conflicts =
-    do  dumpDiffs colorEnable opts path conflicts
+    do  when (shouldDumpDiffs opts || shouldDumpDiff2 opts) $
+            mapM_ (dumpDiffs colorEnable opts path (length conflicts)) (zip [1..] conflicts)
         openEditor opts path
 
 overwrite :: FilePath -> String -> IO ()
