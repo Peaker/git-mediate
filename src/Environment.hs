@@ -9,24 +9,24 @@ import           Control.Monad (when, unless)
 import           Opts (Options(..))
 import           PPDiff (ColorEnable(..))
 import           StrUtils (stripNewline)
+import           System.Console.ANSI (hSupportsANSI)
+import           System.IO (stdout)
 import           System.Environment (getEnv)
 import           System.Exit (ExitCode(..))
-import           System.Posix.IO (stdOutput)
-import           System.Posix.Terminal (queryTerminal)
 import           System.Process (callProcess, readProcessWithExitCode)
 
 import           Prelude.Compat
 
 shouldUseColorByTerminal :: IO ColorEnable
 shouldUseColorByTerminal =
-    do  istty <- queryTerminal stdOutput
+    do  istty <- hSupportsANSI stdout
         return $ if istty then EnableColor else DisableColor
 
 getConflictStyle :: IO String
 getConflictStyle =
-    do  (exitCode, stdout, _) <- readProcessWithExitCode "git" ["config", "merge.conflictstyle"] stdin
+    do  (exitCode, output, _) <- readProcessWithExitCode "git" ["config", "merge.conflictstyle"] stdin
         case exitCode of
-            ExitSuccess -> return $ stripNewline stdout
+            ExitSuccess -> return $ stripNewline output
             ExitFailure 1 -> return "unset"
             ExitFailure _ -> E.throwIO exitCode
     where

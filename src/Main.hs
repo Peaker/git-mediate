@@ -21,7 +21,7 @@ import           System.Exit (ExitCode(..), exitWith)
 import           System.FilePath ((<.>), makeRelative, joinPath, splitPath)
 import qualified System.FilePath as FilePath
 import           System.IO (hPutStr, stderr)
-import qualified System.Posix.Files as PosixFiles
+import qualified System.PosixCompat.Files as PosixFiles
 import           System.Process (callProcess, readProcess, readProcessWithExitCode)
 
 import           Prelude.Compat
