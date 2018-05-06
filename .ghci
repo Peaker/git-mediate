@@ -1,2 +1,2 @@
 :set -Wall
-:set -isrc -idist/build/autogen
+:set -isrc -idist/build/autogen -idist/build/git-mediate/autogen
