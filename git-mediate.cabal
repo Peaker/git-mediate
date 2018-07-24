@@ -2,9 +2,46 @@
 -- further documentation, see http://haskell.org/cabal/users-guide/
 
 name:                git-mediate
-version:             1.0.4
-synopsis:            Remove trivial conflict markers in a git repository
-description:         Remove trivial conflict markers in a git repository
+version:             1.0.5
+synopsis:            Tool to help resolving git conflicts
+description:         Git conflict resolution has never been easier
+                     .
+                     When encountering a conflict, you can sometimes
+                     imagine: if only I could have applied one of
+                     these patches BEFORE the other rather than
+                     concurrently, I wouldn't be in this mess!
+                     .
+                     Well, with git-mediate, you can!
+                     .
+
+                     In any conflicted state - git-mediate shows you
+                     the 2 diffs involved. By applying these diffs to
+                     the base version and the other version, you
+                     emulate the situation where the patch had already
+                     existed when the other had been applied.
+                     .
+                     Reapply git-mediate, it will validate that you've
+                     indeed applied it correctly, and bam: conflict
+                     disappeared!
+                     .
+                     Git-mediate also lets you handle modify/delete
+                     conflicts (there's no sane way in git to show
+                     what the modification actually was)
+                     .
+                     Git-mediate also streamlines jumping to the
+                     conflicts with your editor, either with the `-e`
+                     option to invoke your editor, or via the standard
+                     line number format, which is parsed by all major
+                     editors, to allow use of "jump to next error"
+                     keys.
+                     .
+                     Git-mediate especially shines with automatic
+                     source transformation tools such as renamers.
+                     .
+                     In a conflicted state, re-apply a rename that
+                     caused the conflict, run git-mediate without
+                     opening any files, and the conflicts are gone!
+
 homepage:            https://github.com/Peaker/git-mediate
 license:             GPL-2
 license-file:        LICENSE
@@ -13,7 +50,7 @@ maintainer:          eyal.lotem@gmail.com
 -- copyright:
 category:            Development
 build-type:          Simple
--- extra-source-files:
+extra-source-files:  stack.yaml
 cabal-version:       >=1.10
 
 source-repository head
