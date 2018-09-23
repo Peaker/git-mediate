@@ -202,19 +202,16 @@ getStatusPorcelain =
             exitWith statusCode
         return statusPorcelain
 
-main :: IO ()
-main =
-  do  opts <- Opts.getOpts
-      colorEnable <-
-          case shouldUseColor opts of
-              Nothing -> shouldUseColorByTerminal
-              Just colorEnable -> return colorEnable
-      checkConflictStyle opts
-      statusPorcelain <- getStatusPorcelain
-      cwd <- getCurrentDirectory
-      rootDir <-
-          relativePath cwd . stripNewline <$>
+getGitRootDir :: IO FilePath
+getGitRootDir =
+  do  cwd <- getCurrentDirectory
+      relativePath cwd . stripNewline <$>
           readProcess "git" ["rev-parse", "--show-toplevel"] ""
+
+makeFilesMatchingPrefixes :: IO ([String] -> IO [FilePath])
+makeFilesMatchingPrefixes =
+  do  statusPorcelain <- getStatusPorcelain
+      rootDir <- getGitRootDir
       let rootRelativeFiles =
               filterM (fmap not . isDirectory) . map (rootDir </>)
       let firstMatchingPrefix :: [String] -> String -> Maybe String
@@ -224,6 +221,17 @@ main =
           filesMatchingPrefixes prefixes =
               rootRelativeFiles . mapMaybe (firstMatchingPrefix prefixes)
               $ lines statusPorcelain
+      pure filesMatchingPrefixes
+
+main :: IO ()
+main =
+  do  opts <- Opts.getOpts
+      colorEnable <-
+          case shouldUseColor opts of
+              Nothing -> shouldUseColorByTerminal
+              Just colorEnable -> return colorEnable
+      checkConflictStyle opts
+      filesMatchingPrefixes <- makeFilesMatchingPrefixes
 
 -- from git-diff manpage:
 -- Added (A), Copied (C), Deleted (D), Modified (M), Renamed (R),
