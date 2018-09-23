@@ -19,6 +19,7 @@ data Options = Options
     , shouldDumpDiff2 :: Bool
     , shouldUseColor :: Maybe ColorEnable
     , shouldSetConflictStyle :: Bool
+    , mergeSpecificFile :: Maybe FilePath
     }
 
 data CmdArgs = CmdVersion | CmdOptions Options
@@ -49,6 +50,12 @@ parser =
             <*> O.switch
                 ( O.long "style" <> O.short 's'
                   <> O.help "Configure git's global merge.conflictstyle to diff3 if needed"
+                )
+            <*> ( ( Just <$>
+                    O.strOption
+                    (O.long "merge-file" <> O.short 'f' <> O.help "Merge a specific file")
+                  )
+                  <|> pure Nothing
                 )
             )
 

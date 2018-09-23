@@ -223,15 +223,9 @@ makeFilesMatchingPrefixes =
               $ lines statusPorcelain
       pure filesMatchingPrefixes
 
-main :: IO ()
-main =
-  do  opts <- Opts.getOpts
-      colorEnable <-
-          case shouldUseColor opts of
-              Nothing -> shouldUseColorByTerminal
-              Just colorEnable -> return colorEnable
-      checkConflictStyle opts
-      filesMatchingPrefixes <- makeFilesMatchingPrefixes
+mediateAll :: ColorEnable -> Options -> IO ()
+mediateAll colorEnable opts =
+  do  filesMatchingPrefixes <- makeFilesMatchingPrefixes
 
 -- from git-diff manpage:
 -- Added (A), Copied (C), Deleted (D), Modified (M), Renamed (R),
@@ -248,3 +242,15 @@ main =
       -- Heuristically delete files that were remove/modify conflict
       -- and ended up with empty content
       mapM_ removeFileIfEmpty deleteModifyConflicts
+
+main :: IO ()
+main =
+  do  opts <- Opts.getOpts
+      colorEnable <-
+          case shouldUseColor opts of
+              Nothing -> shouldUseColorByTerminal
+              Just colorEnable -> return colorEnable
+      checkConflictStyle opts
+      case mergeSpecificFile opts of
+          Nothing -> mediateAll colorEnable opts
+          Just path -> resolve colorEnable opts path
