@@ -1,4 +1,5 @@
 flags: {}
 packages:
 - '.'
-resolver: lts-16.0
+resolver: lts-18.14
+allow-newer: true
