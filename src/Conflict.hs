@@ -84,9 +84,9 @@ parseConflict markerA =
             , cBodyBase   = map snd linesBase
             }
 
-parseConflicts :: String -> [Either String Conflict]
-parseConflicts input =
-    snd $ runWriter $ evalStateT loop (zip [1..] (lines input))
+parseConflictsFromNumberedLines :: [(LineNo, String)] -> [Either String Conflict]
+parseConflictsFromNumberedLines =
+    snd . runWriter . evalStateT loop
     where
         loop =
             do  (ls, mMarkerA) <- tryReadUpToMarker '<'
@@ -96,3 +96,7 @@ parseConflicts input =
                     Just markerA ->
                         do  tell . return . Right =<< parseConflict markerA
                             loop
+
+parseConflicts :: String -> [Either String Conflict]
+parseConflicts input =
+    parseConflictsFromNumberedLines (zip [1..] (lines input))
