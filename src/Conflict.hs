@@ -20,17 +20,17 @@ data Conflict = Conflict
     , cMarkerBase :: (LineNo, String) -- |||||||....
     , cMarkerB    :: (LineNo, String) -- =======....
     , cMarkerEnd  :: (LineNo, String) -- >>>>>>>....
-    , cLinesA     :: [String]
-    , cLinesBase  :: [String]
-    , cLinesB     :: [String]
+    , cBodyA      :: [String]
+    , cBodyBase   :: [String]
+    , cBodyB      :: [String]
     } deriving (Show)
 
 prettyConflictLines :: Conflict -> [String]
 prettyConflictLines Conflict {..} =
     concat
-    [ snd cMarkerA    : cLinesA
-    , snd cMarkerBase : cLinesBase
-    , snd cMarkerB    : cLinesB
+    [ snd cMarkerA    : cBodyA
+    , snd cMarkerBase : cBodyBase
+    , snd cMarkerB    : cBodyB
     , [snd cMarkerEnd]
     ]
 
@@ -79,9 +79,9 @@ parseConflict markerA =
             , cMarkerBase = markerBase
             , cMarkerB    = markerB
             , cMarkerEnd  = markerEnd
-            , cLinesA     = map snd linesA
-            , cLinesB     = map snd linesB
-            , cLinesBase  = map snd linesBase
+            , cBodyA      = map snd linesA
+            , cBodyB      = map snd linesB
+            , cBodyBase   = map snd linesBase
             }
 
 parseConflicts :: String -> [Either String Conflict]

@@ -17,10 +17,10 @@ type SideDiff = (Side, (LineNo, String), [Diff String])
 
 getConflictDiffs :: Conflict -> [SideDiff]
 getConflictDiffs Conflict{..} =
-    [ (A, cMarkerA, getDiff cLinesBase cLinesA)
-    | not (null cLinesA) ] ++
-    [ (B, (fst cMarkerB, snd cMarkerEnd), getDiff cLinesBase cLinesB)
-    | not (null cLinesB) ]
+    [ (A, cMarkerA, getDiff cBodyBase cBodyA)
+    | not (null cBodyA) ] ++
+    [ (B, (fst cMarkerB, snd cMarkerEnd), getDiff cBodyBase cBodyB)
+    | not (null cBodyB) ]
 
 getConflictDiff2s :: Conflict -> ((LineNo, String), (LineNo, String), [Diff String])
-getConflictDiff2s Conflict{..} = (cMarkerA, cMarkerB, getDiff cLinesA cLinesB)
+getConflictDiff2s Conflict{..} = (cMarkerA, cMarkerB, getDiff cBodyA cBodyB)

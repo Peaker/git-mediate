@@ -16,28 +16,28 @@ data Resolution
 
 resolveConflict :: Conflict -> Resolution
 resolveConflict conflict@Conflict{..}
-    | cLinesA == cLinesBase = Resolution $ unlines cLinesB
-    | cLinesB == cLinesBase = Resolution $ unlines cLinesA
-    | cLinesA == cLinesB = Resolution $ unlines cLinesA
+    | cBodyA == cBodyBase = Resolution $ unlines cBodyB
+    | cBodyB == cBodyBase = Resolution $ unlines cBodyA
+    | cBodyA == cBodyB = Resolution $ unlines cBodyA
     | matchTop > 0 || matchBottom > 0 =
         PartialResolution $ unlines $
-        take matchTop cLinesBase ++
+        take matchTop cBodyBase ++
         prettyConflictLines conflict
-        { cLinesA = unmatched cLinesA
-        , cLinesBase = unmatched cLinesBase
-        , cLinesB = unmatched cLinesB
+        { cBodyA = unmatched cBodyA
+        , cBodyBase = unmatched cBodyBase
+        , cBodyB = unmatched cBodyB
         } ++
-        takeEnd matchBottom cLinesBase
+        takeEnd matchBottom cBodyBase
     | otherwise = NoResolution
     where
         matchTop =
-            minimum $ map (lengthOfCommonPrefix cLinesBase) [cLinesA, cLinesB]
+            minimum $ map (lengthOfCommonPrefix cBodyBase) [cBodyA, cBodyB]
         revBottom = reverse . drop matchTop
-        revBottomBase = revBottom cLinesBase
+        revBottomBase = revBottom cBodyBase
         matchBottom =
             minimum $
             map (lengthOfCommonPrefix revBottomBase . revBottom)
-            [cLinesA, cLinesB]
+            [cBodyA, cBodyB]
         dropEnd count xs = take (length xs - count) xs
         takeEnd count xs = drop (length xs - count) xs
         unmatched xs = drop matchTop $ dropEnd matchBottom xs
