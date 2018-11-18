@@ -1,11 +1,12 @@
 {-# LANGUAGE NoImplicitPrelude, RecordWildCards #-}
 
 module Resolution
-    ( Resolution(..)
-    , resolveConflict
+    ( NewContent(..)
+    , resolveContent
     ) where
 
-import           Conflict (Conflict(..), prettyConflictLines)
+import           Conflict (Conflict(..), prettyConflictLines, prettyConflict)
+import qualified Data.Monoid as Monoid
 
 import           Prelude.Compat
 
@@ -44,3 +45,28 @@ resolveConflict conflict@Conflict{..}
 
 lengthOfCommonPrefix :: Eq a => [a] -> [a] -> Int
 lengthOfCommonPrefix x y = length $ takeWhile id $ zipWith (==) x y
+
+data NewContent = NewContent
+    { _resolvedSuccessfully :: Int
+    , _reducedConflicts :: Int
+    , _failedToResolve :: Int
+    , _newContent :: String
+    }
+
+resolveContent :: [Either String Conflict] -> NewContent
+resolveContent =
+    asResult . mconcat . map go
+    where
+        asResult (Monoid.Sum successes, Monoid.Sum reductions, Monoid.Sum failures, newContent) =
+            NewContent
+            { _resolvedSuccessfully = successes
+            , _reducedConflicts = reductions
+            , _failedToResolve = failures
+            , _newContent = newContent
+            }
+        go (Left line) = (Monoid.Sum 0, Monoid.Sum 0, Monoid.Sum 0, unlines [line])
+        go (Right conflict) =
+            case resolveConflict conflict of
+            NoResolution -> (Monoid.Sum 0, Monoid.Sum 0, Monoid.Sum 1, prettyConflict conflict)
+            Resolution trivialLines -> (Monoid.Sum 1, Monoid.Sum 0, Monoid.Sum 0, trivialLines)
+            PartialResolution newLines -> (Monoid.Sum 0, Monoid.Sum 1, Monoid.Sum 0, newLines)

@@ -2,18 +2,17 @@
 
 module Main (main) where
 
-import           Conflict (Conflict(..), prettyConflict, parseConflicts, markerPrefix)
+import           Conflict (Conflict(..), parseConflicts, markerPrefix)
 import qualified Control.Exception as E
 import           Control.Monad (when, unless, filterM)
 import           Data.Foldable (asum, traverse_)
 import           Data.List (isPrefixOf)
 import           Data.Maybe (mapMaybe)
-import qualified Data.Monoid as Monoid
 import           Environment (checkConflictStyle, openEditor, shouldUseColorByTerminal)
 import qualified Opts
 import           Opts (Options(..))
 import           PPDiff (ppDiff, ColorEnable(..))
-import           Resolution (Resolution(..), resolveConflict)
+import           Resolution (NewContent(..), resolveContent)
 import           SideDiff (getConflictDiffs, getConflictDiff2s)
 import           StrUtils (ensureNewline, stripNewline, unprefix)
 import           System.Directory (renameFile, removeFile, getCurrentDirectory)
@@ -28,31 +27,6 @@ import           Prelude.Compat
 
 markerLine :: Char -> String -> String
 markerLine c str = markerPrefix c ++ " " ++ str ++ "\n"
-
-data NewContent = NewContent
-    { _resolvedSuccessfully :: Int
-    , _reducedConflicts :: Int
-    , _failedToResolve :: Int
-    , _newContent :: String
-    }
-
-resolveContent :: [Either String Conflict] -> NewContent
-resolveContent =
-    asResult . mconcat . map go
-    where
-        asResult (Monoid.Sum successes, Monoid.Sum reductions, Monoid.Sum failures, newContent) =
-            NewContent
-            { _resolvedSuccessfully = successes
-            , _reducedConflicts = reductions
-            , _failedToResolve = failures
-            , _newContent = newContent
-            }
-        go (Left line) = (Monoid.Sum 0, Monoid.Sum 0, Monoid.Sum 0, unlines [line])
-        go (Right conflict) =
-            case resolveConflict conflict of
-            NoResolution -> (Monoid.Sum 0, Monoid.Sum 0, Monoid.Sum 1, prettyConflict conflict)
-            Resolution trivialLines -> (Monoid.Sum 1, Monoid.Sum 0, Monoid.Sum 0, trivialLines)
-            PartialResolution newLines -> (Monoid.Sum 0, Monoid.Sum 1, Monoid.Sum 0, newLines)
 
 gitAdd :: FilePath -> IO ()
 gitAdd fileName =
