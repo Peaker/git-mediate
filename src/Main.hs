@@ -13,7 +13,7 @@ import           Environment (checkConflictStyle, openEditor, shouldUseColorByTe
 import qualified Opts
 import           Opts (Options(..))
 import           PPDiff (ppDiff, ColorEnable(..))
-import           Resolution (NewContent(..), resolveContent)
+import           Resolution (Result(..), NewContent(..), resolveContent)
 import           SideDiff (getConflictDiffs, getConflictDiff2s)
 import           StrUtils (ensureNewline, stripNewline, unprefix)
 import           System.Directory (renameFile, removeFile, getCurrentDirectory)
@@ -67,7 +67,7 @@ resolve :: ColorEnable -> Options -> FilePath -> IO ()
 resolve colorEnable opts fileName =
     resolveContent . Conflict.parse <$> readFile fileName
     >>= \case
-    NewContent successes reductions failures newContent
+    NewContent (Result successes reductions failures) newContent
         | successes == 0 && allGood ->
           do  putStrLn $ fileName ++ ": No conflicts, git-adding"
               gitAdd fileName

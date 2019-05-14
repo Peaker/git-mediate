@@ -1,7 +1,8 @@
 {-# LANGUAGE NoImplicitPrelude, RecordWildCards #-}
 
 module Resolution
-    ( NewContent(..)
+    ( Result(..)
+    , NewContent(..)
     , resolveContent
     ) where
 
@@ -47,27 +48,35 @@ resolveConflict conflict@Conflict{..}
 lengthOfCommonPrefix :: Eq a => [a] -> [a] -> Int
 lengthOfCommonPrefix x y = length $ takeWhile id $ zipWith (==) x y
 
-data NewContent = NewContent
-    { _resolvedSuccessfully :: Int
-    , _reducedConflicts :: Int
-    , _failedToResolve :: Int
-    , _newContent :: String
+data Result = Result
+    { _resolvedSuccessfully :: !Int
+    , _reducedConflicts :: !Int
+    , _failedToResolve :: !Int
     }
+
+instance Semigroup Result where
+    Result x0 y0 z0 <> Result x1 y1 z1 = Result (x0+x1) (y0+y1) (z0+z1)
+
+instance Monoid Result where mempty = Result 0 0 0
+
+data NewContent = NewContent
+    { _result :: !Result
+    , _newContent :: !String
+    }
+
+instance Semigroup NewContent where
+    NewContent x0 y0 <> NewContent x1 y1 = NewContent (x0<>x1) (y0<>y1)
+
+instance Monoid NewContent where mempty = NewContent mempty mempty
 
 resolveContent :: [Either String Conflict] -> NewContent
 resolveContent =
-    asResult . mconcat . map go
+    foldMap go
     where
-        asResult (Monoid.Sum successes, Monoid.Sum reductions, Monoid.Sum failures, newContent) =
-            NewContent
-            { _resolvedSuccessfully = successes
-            , _reducedConflicts = reductions
-            , _failedToResolve = failures
-            , _newContent = newContent
-            }
-        go (Left line) = (0, 0, 0, unlines [line])
+        go (Left line) = NewContent mempty (unlines [line])
         go (Right conflict) =
             case resolveConflict conflict of
-            NoResolution               -> (0, 0, 1, Conflict.pretty conflict)
-            Resolution trivialLines    -> (1, 0, 0, trivialLines)
-            PartialResolution newLines -> (0, 1, 0, newLines)
+            NoResolution               -> NewContent (Result 0 0 1)
+                                          (Conflict.pretty conflict)
+            Resolution trivialLines    -> NewContent (Result 1 0 0) trivialLines
+            PartialResolution newLines -> NewContent (Result 0 1 0) newLines
