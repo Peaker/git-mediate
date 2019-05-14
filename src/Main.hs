@@ -37,7 +37,7 @@ dumpDiffs :: ColorEnable -> Options -> FilePath -> Int -> (Int, Conflict) -> IO 
 dumpDiffs colorEnable opts filePath count (idx, conflict) =
     do
         putStrLn $ unwords ["### Conflict", show idx, "of", show count]
-        when (shouldDumpDiffs opts) $ mapM_ dumpDiff $ getConflictDiffs conflict
+        when (shouldDumpDiffs opts) $ traverse_ dumpDiff $ getConflictDiffs conflict
         when (shouldDumpDiff2 opts) $ dumpDiff2 $ getConflictDiff2s conflict
     where
         dumpDiff (side, (lineNo, marker), diff) =
@@ -52,7 +52,7 @@ dumpDiffs colorEnable opts filePath count (idx, conflict) =
 dumpAndOpenEditor :: ColorEnable -> Options -> FilePath -> [Conflict] -> IO ()
 dumpAndOpenEditor colorEnable opts path conflicts =
     do  when (shouldDumpDiffs opts || shouldDumpDiff2 opts) $
-            mapM_ (dumpDiffs colorEnable opts path (length conflicts)) (zip [1..] conflicts)
+            traverse_ (dumpDiffs colorEnable opts path (length conflicts)) (zip [1..] conflicts)
         openEditor opts path
 
 overwrite :: FilePath -> String -> IO ()
@@ -210,14 +210,14 @@ mediateAll colorEnable opts =
 
       deleteModifyConflicts <- filesMatchingPrefixes ["DU ", "UD "]
 
-      mapM_ deleteModifyConflictHandle deleteModifyConflicts
+      traverse_ deleteModifyConflictHandle deleteModifyConflicts
 
       filesMatchingPrefixes ["UU ", "AA ", "DA ", "AD ", "DU ", "UD "]
-          >>= mapM_ (resolve colorEnable opts)
+          >>= traverse_ (resolve colorEnable opts)
 
       -- Heuristically delete files that were remove/modify conflict
       -- and ended up with empty content
-      mapM_ removeFileIfEmpty deleteModifyConflicts
+      traverse_ removeFileIfEmpty deleteModifyConflicts
 
 main :: IO ()
 main =
