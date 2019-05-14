@@ -2,7 +2,8 @@
 
 module Main (main) where
 
-import           Conflict (Conflict(..), parseConflicts, markerPrefix)
+import           Conflict (Conflict(..))
+import qualified Conflict as Conflict
 import qualified Control.Exception as E
 import           Control.Monad (when, unless, filterM)
 import           Data.Foldable (asum, traverse_)
@@ -26,7 +27,7 @@ import           System.Process (callProcess, readProcess, readProcessWithExitCo
 import           Prelude.Compat
 
 markerLine :: Char -> String -> String
-markerLine c str = markerPrefix c ++ " " ++ str ++ "\n"
+markerLine c str = Conflict.markerPrefix c ++ " " ++ str ++ "\n"
 
 gitAdd :: FilePath -> IO ()
 gitAdd fileName =
@@ -64,7 +65,7 @@ overwrite fileName newContent =
 
 resolve :: ColorEnable -> Options -> FilePath -> IO ()
 resolve colorEnable opts fileName =
-    resolveContent . parseConflicts <$> readFile fileName
+    resolveContent . Conflict.parse <$> readFile fileName
     >>= \case
     NewContent successes reductions failures newContent
         | successes == 0 && allGood ->
@@ -94,7 +95,7 @@ resolve colorEnable opts fileName =
             allGood = failures == 0 && reductions == 0
             doDump =
                 dumpAndOpenEditor colorEnable opts fileName
-                [ conflict | Right conflict <- parseConflicts newContent ]
+                [ conflict | Right conflict <- Conflict.parse newContent ]
 
 relativePath :: FilePath -> FilePath -> FilePath
 relativePath base path
@@ -153,7 +154,8 @@ deleteModifyConflictAddMarkers path =
 
 deleteModifyConflictHandle :: FilePath -> IO ()
 deleteModifyConflictHandle path =
-    do  marked <- any (markerPrefix '<' `isPrefixOf`) . lines <$> readFile path
+    do  marked <-
+            any (Conflict.markerPrefix '<' `isPrefixOf`) . lines <$> readFile path
         unless marked $
             do  putStrLn $ show path ++ " has a delete/modify conflict. Adding conflict markers"
                 deleteModifyConflictAddMarkers path

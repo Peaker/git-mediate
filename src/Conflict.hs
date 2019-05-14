@@ -2,8 +2,8 @@
 
 module Conflict
     ( Conflict(..), LineNo
-    , prettyConflict, prettyConflictLines
-    , parseConflicts
+    , pretty, prettyLines
+    , parse
     , markerPrefix
     ) where
 
@@ -25,8 +25,8 @@ data Conflict = Conflict
     , cBodyB      :: [String]
     } deriving (Show)
 
-prettyConflictLines :: Conflict -> [String]
-prettyConflictLines Conflict {..} =
+prettyLines :: Conflict -> [String]
+prettyLines Conflict {..} =
     concat
     [ snd cMarkerA    : cBodyA
     , snd cMarkerBase : cBodyBase
@@ -34,8 +34,8 @@ prettyConflictLines Conflict {..} =
     , [snd cMarkerEnd]
     ]
 
-prettyConflict :: Conflict -> String
-prettyConflict = unlines . prettyConflictLines
+pretty :: Conflict -> String
+pretty = unlines . prettyLines
 
 -- '>' -> ">>>>>>>"
 markerPrefix :: Char -> String
@@ -84,8 +84,8 @@ parseConflict markerA =
             , cBodyBase   = map snd linesBase
             }
 
-parseConflictsFromNumberedLines :: [(LineNo, String)] -> [Either String Conflict]
-parseConflictsFromNumberedLines =
+parseFromNumberedLines :: [(LineNo, String)] -> [Either String Conflict]
+parseFromNumberedLines =
     snd . runWriter . evalStateT loop
     where
         loop =
@@ -97,6 +97,6 @@ parseConflictsFromNumberedLines =
                         do  tell . return . Right =<< parseConflict markerA
                             loop
 
-parseConflicts :: String -> [Either String Conflict]
-parseConflicts input =
-    parseConflictsFromNumberedLines (zip [1..] (lines input))
+parse :: String -> [Either String Conflict]
+parse input =
+    parseFromNumberedLines (zip [1..] (lines input))

@@ -5,7 +5,8 @@ module Resolution
     , resolveContent
     ) where
 
-import           Conflict (Conflict(..), prettyConflictLines, prettyConflict)
+import           Conflict (Conflict(..))
+import qualified Conflict as Conflict
 import qualified Data.Monoid as Monoid
 
 import           Prelude.Compat
@@ -23,7 +24,7 @@ resolveConflict conflict@Conflict{..}
     | matchTop > 0 || matchBottom > 0 =
         PartialResolution $ unlines $
         take matchTop cBodyBase ++
-        prettyConflictLines conflict
+        Conflict.prettyLines conflict
         { cBodyA = unmatched cBodyA
         , cBodyBase = unmatched cBodyBase
         , cBodyB = unmatched cBodyB
@@ -67,6 +68,6 @@ resolveContent =
         go (Left line) = (Monoid.Sum 0, Monoid.Sum 0, Monoid.Sum 0, unlines [line])
         go (Right conflict) =
             case resolveConflict conflict of
-            NoResolution -> (Monoid.Sum 0, Monoid.Sum 0, Monoid.Sum 1, prettyConflict conflict)
+            NoResolution -> (Monoid.Sum 0, Monoid.Sum 0, Monoid.Sum 1, Conflict.pretty conflict)
             Resolution trivialLines -> (Monoid.Sum 1, Monoid.Sum 0, Monoid.Sum 0, trivialLines)
             PartialResolution newLines -> (Monoid.Sum 0, Monoid.Sum 1, Monoid.Sum 0, newLines)
