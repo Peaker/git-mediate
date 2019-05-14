@@ -65,9 +65,9 @@ resolveContent =
             , _failedToResolve = failures
             , _newContent = newContent
             }
-        go (Left line) = (Monoid.Sum 0, Monoid.Sum 0, Monoid.Sum 0, unlines [line])
+        go (Left line) = (0, 0, 0, unlines [line])
         go (Right conflict) =
             case resolveConflict conflict of
-            NoResolution -> (Monoid.Sum 0, Monoid.Sum 0, Monoid.Sum 1, Conflict.pretty conflict)
-            Resolution trivialLines -> (Monoid.Sum 1, Monoid.Sum 0, Monoid.Sum 0, trivialLines)
-            PartialResolution newLines -> (Monoid.Sum 0, Monoid.Sum 1, Monoid.Sum 0, newLines)
+            NoResolution               -> (0, 0, 1, Conflict.pretty conflict)
+            Resolution trivialLines    -> (1, 0, 0, trivialLines)
+            PartialResolution newLines -> (0, 1, 0, newLines)
