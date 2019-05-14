@@ -1,9 +1,11 @@
-{-# LANGUAGE NoImplicitPrelude, RecordWildCards #-}
+{-# LANGUAGE NoImplicitPrelude, RecordWildCards, BangPatterns #-}
 
 module Resolution
     ( Result(..)
     , NewContent(..)
+    , Untabify(..)
     , resolveContent
+    , fullySuccessful
     ) where
 
 import           Conflict (Conflict(..))
@@ -54,6 +56,9 @@ data Result = Result
     , _failedToResolve :: !Int
     }
 
+fullySuccessful :: Result -> Bool
+fullySuccessful (Result _ reduced failed) = reduced == 0 && failed == 0
+
 instance Semigroup Result where
     Result x0 y0 z0 <> Result x1 y1 z1 = Result (x0+x1) (y0+y1) (z0+z1)
 
@@ -69,14 +74,31 @@ instance Semigroup NewContent where
 
 instance Monoid NewContent where mempty = NewContent mempty mempty
 
-resolveContent :: [Either String Conflict] -> NewContent
-resolveContent =
+newtype Untabify = Untabify { mUntabifySize :: Maybe Int }
+
+untabifyStr :: Int -> String -> String
+untabifyStr size =
+    go 0
+    where
+        cyclicInc col
+            | col >= size - 1 = 0
+            | otherwise = col + 1
+        go !col ('\t':rest) = replicate (size - col) ' ' ++ go 0 rest
+        go !col (x:rest) = x : go (cyclicInc col) rest
+        go _ [] = []
+
+untabify :: Int -> Conflict -> Conflict
+untabify = Conflict.setBodyStrings . map . untabifyStr
+
+resolveContent :: Untabify -> [Either String Conflict] -> NewContent
+resolveContent (Untabify mUntabifySize) =
     foldMap go
     where
+        untabified = maybe id untabify mUntabifySize
         go (Left line) = NewContent mempty (unlines [line])
         go (Right conflict) =
-            case resolveConflict conflict of
+            case resolveConflict (untabified conflict) of
             NoResolution               -> NewContent (Result 0 0 1)
-                                          (Conflict.pretty conflict)
+                                          (Conflict.pretty (untabified conflict))
             Resolution trivialLines    -> NewContent (Result 1 0 0) trivialLines
             PartialResolution newLines -> NewContent (Result 0 1 0) newLines

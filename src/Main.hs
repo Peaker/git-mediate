@@ -13,7 +13,8 @@ import           Environment (checkConflictStyle, openEditor, shouldUseColorByTe
 import qualified Opts
 import           Opts (Options(..))
 import           PPDiff (ppDiff, ColorEnable(..))
-import           Resolution (Result(..), NewContent(..), resolveContent)
+import           Resolution (Result(..), NewContent(..), Untabify(..))
+import qualified Resolution as Resolution
 import           SideDiff (getConflictDiffs, getConflictDiff2s)
 import           StrUtils (ensureNewline, stripNewline, unprefix)
 import           System.Directory (renameFile, removeFile, getCurrentDirectory)
@@ -63,39 +64,50 @@ overwrite fileName newContent =
     where
         bkup = fileName <.> "bk"
 
-resolve :: ColorEnable -> Options -> FilePath -> IO ()
+handleFileResult :: ColorEnable -> Options -> FilePath -> NewContent -> IO ()
+handleFileResult colorEnable opts fileName (NewContent result newContent)
+    | successes == 0 && allGood =
+      do  putStrLn $ fileName ++ ": No conflicts, git-adding"
+          gitAdd fileName
+    | successes == 0 && reductions == 0 =
+      do  putStrLn $ concat
+              [ fileName, ": Failed to resolve any of the "
+              , show failures, " conflicts" ]
+          doDump
+    | successes == 0 =
+      do  putStrLn $ concat
+              [ fileName, ": Reduced ", show reductions, " conflicts"]
+          overwrite fileName newContent
+          doDump
+    | otherwise =
+      do  putStrLn $ concat
+              [ fileName, ": Successfully resolved ", show successes
+              , " conflicts (failed to resolve " ++ show (reductions + failures) ++ " conflicts)"
+              , if allGood then ", git adding" else ""
+              ]
+          overwrite fileName newContent
+          if allGood
+              then gitAdd fileName
+              else doDump
+    where
+        allGood = Resolution.fullySuccessful result
+        doDump =
+            dumpAndOpenEditor colorEnable opts fileName
+            [ conflict | Right conflict <- Conflict.parse newContent ]
+        Result
+            { _resolvedSuccessfully = successes
+            , _reducedConflicts = reductions
+            , _failedToResolve = failures
+            } = result
+
+resolve :: ColorEnable -> Options -> FilePath -> IO Result
 resolve colorEnable opts fileName =
-    resolveContent . Conflict.parse <$> readFile fileName
-    >>= \case
-    NewContent (Result successes reductions failures) newContent
-        | successes == 0 && allGood ->
-          do  putStrLn $ fileName ++ ": No conflicts, git-adding"
-              gitAdd fileName
-        | successes == 0 && reductions == 0 ->
-          do  putStrLn $ concat
-                  [ fileName, ": Failed to resolve any of the "
-                  , show failures, " conflicts" ]
-              doDump
-        | successes == 0 ->
-          do  putStrLn $ concat
-                  [ fileName, ": Reduced ", show reductions, " conflicts"]
-              overwrite fileName newContent
-              doDump
-        | otherwise ->
-          do  putStrLn $ concat
-                  [ fileName, ": Successfully resolved ", show successes
-                  , " conflicts (failed to resolve " ++ show (reductions + failures) ++ " conflicts)"
-                  , if allGood then ", git adding" else ""
-                  ]
-              overwrite fileName newContent
-              if allGood
-                  then gitAdd fileName
-                  else doDump
-        where
-            allGood = failures == 0 && reductions == 0
-            doDump =
-                dumpAndOpenEditor colorEnable opts fileName
-                [ conflict | Right conflict <- Conflict.parse newContent ]
+    do
+        resolutions <-
+            Resolution.resolveContent (Untabify (Opts.untabify opts))
+            . Conflict.parse
+            <$> readFile fileName
+        _result resolutions <$ handleFileResult colorEnable opts fileName resolutions
 
 relativePath :: FilePath -> FilePath -> FilePath
 relativePath base path
@@ -199,7 +211,7 @@ makeFilesMatchingPrefixes =
               $ lines statusPorcelain
       pure filesMatchingPrefixes
 
-mediateAll :: ColorEnable -> Options -> IO ()
+mediateAll :: ColorEnable -> Options -> IO Result
 mediateAll colorEnable opts =
   do  filesMatchingPrefixes <- makeFilesMatchingPrefixes
 
@@ -212,12 +224,21 @@ mediateAll colorEnable opts =
 
       traverse_ deleteModifyConflictHandle deleteModifyConflicts
 
-      filesMatchingPrefixes ["UU ", "AA ", "DA ", "AD ", "DU ", "UD "]
-          >>= traverse_ (resolve colorEnable opts)
+      result <- filesMatchingPrefixes ["UU ", "AA ", "DA ", "AD ", "DU ", "UD "]
+          >>= foldMap (resolve colorEnable opts)
 
       -- Heuristically delete files that were remove/modify conflict
       -- and ended up with empty content
       traverse_ removeFileIfEmpty deleteModifyConflicts
+      pure result
+
+exitCodeOf :: Result -> ExitCode
+exitCodeOf result
+    | Resolution.fullySuccessful result = ExitSuccess
+    | otherwise = ExitFailure 111
+
+exitProcess :: Result -> IO ()
+exitProcess = exitWith . exitCodeOf
 
 main :: IO ()
 main =
@@ -230,3 +251,4 @@ main =
       case mergeSpecificFile opts of
           Nothing -> mediateAll colorEnable opts
           Just path -> resolve colorEnable opts path
+          >>= exitProcess

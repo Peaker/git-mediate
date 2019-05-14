@@ -19,6 +19,7 @@ data Options = Options
     , shouldDumpDiff2 :: Bool
     , shouldUseColor :: Maybe ColorEnable
     , shouldSetConflictStyle :: Bool
+    , untabify :: Maybe Int
     , mergeSpecificFile :: Maybe FilePath
     }
 
@@ -50,6 +51,12 @@ parser =
             <*> O.switch
                 ( O.long "style" <> O.short 's'
                   <> O.help "Configure git's global merge.conflictstyle to diff3 if needed"
+                )
+            <*> O.optional
+                ( O.option O.auto
+                    ( O.long "untabify" <> O.metavar "TABSIZE"
+                        <> O.help "Convert tabs to the spaces at the tab stops for the given tab size"
+                    )
                 )
             <*> ( ( Just <$>
                     O.strOption

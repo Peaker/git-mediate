@@ -1,4 +1,4 @@
-set -eux
+set -eu
 
 DIR="$( dirname "$0" )"
 cd ${DIR}
@@ -9,16 +9,16 @@ rm -rf .git
 git init >/dev/null
 git config user.email test@test.com
 git config user.name Test
-echo hi > 'a b'
-git add -- 'a b'
-git commit -m"a b file added" >/dev/null
-echo changeA >> 'a b'
+echo -e 'Hello\tBooya' > file
+git add -- file
+git commit -m"tabs" >/dev/null
+echo 'Extra line' >> file
 git stash >/dev/null
-echo changeB >> 'a b'
-git add 'a b'
+echo 'Hello   Booya' > file
+git add file
 (git stash pop >/dev/null && exit 1) || echo "Conflict set up successfully"
 # Set up of conflict over
 
-../${git_mediate} >/dev/null && (echo should fail to resolve conflicts ; exit 1)
+../${git_mediate} --untabify=4
 
-rm -rf .git 'a b'
+rm -rf .git file

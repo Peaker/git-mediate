@@ -2,16 +2,18 @@
 
 module Conflict
     ( Conflict(..), LineNo
+    , bodyStrings, setBodyStrings
     , pretty, prettyLines
     , parse
     , markerPrefix
     ) where
 
-import           Control.Monad.State (MonadState, state, evalStateT)
-import           Control.Monad.Writer (runWriter, tell)
-import           Data.List (isPrefixOf)
+import Control.Monad.State (MonadState, state, evalStateT)
+import Control.Monad.Writer (runWriter, tell)
+import Data.Functor.Identity (Identity(..))
+import Data.List (isPrefixOf)
 
-import           Prelude.Compat
+import Prelude.Compat
 
 type LineNo = Int
 
@@ -24,6 +26,18 @@ data Conflict = Conflict
     , cBodyBase   :: [String]
     , cBodyB      :: [String]
     } deriving (Show)
+
+-- traversal
+bodyStrings :: Applicative f => ([String] -> f [String]) -> Conflict -> f Conflict
+bodyStrings f c@Conflict{..} =
+    mk <$> f cBodyA <*> f cBodyBase <*> f cBodyB
+    where
+        mk bodyA bodyBase bodyB =
+            c{cBodyA=bodyA, cBodyBase=bodyBase, cBodyB=bodyB}
+
+-- setter:
+setBodyStrings :: ([String] -> [String]) -> Conflict -> Conflict
+setBodyStrings f = runIdentity . bodyStrings (Identity . f)
 
 prettyLines :: Conflict -> [String]
 prettyLines Conflict {..} =
