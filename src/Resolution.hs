@@ -26,23 +26,21 @@ resolveConflict conflict@Conflict{..}
     | cBodyA == cBodyB = Resolution $ unlines cBodyA
     | matchTop > 0 || matchBottom > 0 =
         PartialResolution $ unlines $
-        take matchTop cBodyBase ++
+        take matchTop cBodyA ++
         Conflict.prettyLines conflict
         { cBodyA = unmatched cBodyA
         , cBodyBase = unmatched cBodyBase
         , cBodyB = unmatched cBodyB
         } ++
-        takeEnd matchBottom cBodyBase
+        takeEnd matchBottom cBodyA
     | otherwise = NoResolution
     where
-        matchTop =
-            minimum $ map (lengthOfCommonPrefix cBodyBase) [cBodyA, cBodyB]
+        match base a b
+            | null base = lengthOfCommonPrefix a b
+            | otherwise = minimum $ map (lengthOfCommonPrefix base) [a, b]
+        matchTop = match cBodyBase cBodyA cBodyB
         revBottom = reverse . drop matchTop
-        revBottomBase = revBottom cBodyBase
-        matchBottom =
-            minimum $
-            map (lengthOfCommonPrefix revBottomBase . revBottom)
-            [cBodyA, cBodyB]
+        matchBottom = match (revBottom cBodyBase) (revBottom cBodyA) (revBottom cBodyB)
         dropEnd count xs = take (length xs - count) xs
         takeEnd count xs = drop (length xs - count) xs
         unmatched xs = drop matchTop $ dropEnd matchBottom xs
