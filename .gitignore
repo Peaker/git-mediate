@@ -8,3 +8,6 @@
 *.i_o
 *.i_hi
 .stack-work/
+/stack.yaml.lock
+tags
+.ghcid
