@@ -88,7 +88,7 @@ untabifyStr size =
         go _ [] = []
 
 untabify :: Int -> Conflict -> Conflict
-untabify = Conflict.setBodyStrings . map . untabifyStr
+untabify = Conflict.setBodyStrings . untabifyStr
 
 resolveContent :: Untabify -> [Either String Conflict] -> NewContent
 resolveContent (Untabify mUntabifySize) =

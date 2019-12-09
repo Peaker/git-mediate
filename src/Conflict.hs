@@ -28,15 +28,15 @@ data Conflict = Conflict
     } deriving (Show)
 
 -- traversal
-bodyStrings :: Applicative f => ([String] -> f [String]) -> Conflict -> f Conflict
+bodyStrings :: Applicative f => (String -> f String) -> Conflict -> f Conflict
 bodyStrings f c@Conflict{..} =
-    mk <$> f cBodyA <*> f cBodyBase <*> f cBodyB
+    mk <$> traverse f cBodyA <*> traverse f cBodyBase <*> traverse f cBodyB
     where
         mk bodyA bodyBase bodyB =
             c{cBodyA=bodyA, cBodyBase=bodyBase, cBodyB=bodyB}
 
 -- setter:
-setBodyStrings :: ([String] -> [String]) -> Conflict -> Conflict
+setBodyStrings :: (String -> String) -> Conflict -> Conflict
 setBodyStrings f = runIdentity . bodyStrings (Identity . f)
 
 prettyLines :: Conflict -> [String]
