@@ -2,7 +2,7 @@
 -- further documentation, see http://haskell.org/cabal/users-guide/
 
 name:                git-mediate
-version:             1.0.7
+version:             1.0.8
 synopsis:            Tool to help resolving git conflicts
 description:         Git conflict resolution has never been easier
                      .
