@@ -3,7 +3,7 @@ module PPDiff
   , ppDiff
   ) where
 
-import Data.Algorithm.Diff (Diff(..))
+import Data.Algorithm.Diff (Diff, PolyDiff(..))
 import System.Console.ANSI
 
 data ColorEnable = EnableColor | DisableColor
