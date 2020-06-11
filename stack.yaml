@@ -1,6 +1,4 @@
 flags: {}
 packages:
 - '.'
-extra-deps:
-- Diff-0.4.0
-resolver: lts-14.6
+resolver: lts-16.0
