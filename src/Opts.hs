@@ -7,7 +7,6 @@ module Opts
     ) where
 
 import           Control.Applicative (Alternative(..))
-import           Data.Monoid ((<>))
 import qualified Options.Applicative as O
 import           PPDiff (ColorEnable(..))
 import           System.Exit (exitSuccess)

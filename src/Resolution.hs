@@ -10,7 +10,6 @@ module Resolution
 
 import           Conflict (Conflict(..))
 import qualified Conflict as Conflict
-import qualified Data.Monoid as Monoid
 
 import           Prelude.Compat
 
