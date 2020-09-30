@@ -9,7 +9,7 @@ module Resolution
     ) where
 
 import           Conflict (Conflict(..))
-import qualified Conflict as Conflict
+import qualified Conflict
 
 import           Prelude.Compat
 

@@ -1,9 +1,9 @@
-{-# LANGUAGE NoImplicitPrelude, LambdaCase #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 module Main (main) where
 
 import           Conflict (Conflict(..))
-import qualified Conflict as Conflict
+import qualified Conflict
 import qualified Control.Exception as E
 import           Control.Monad (when, unless, filterM)
 import           Data.Foldable (asum, traverse_)
@@ -14,7 +14,7 @@ import qualified Opts
 import           Opts (Options(..))
 import           PPDiff (ppDiff, ColorEnable(..))
 import           Resolution (Result(..), NewContent(..), Untabify(..))
-import qualified Resolution as Resolution
+import qualified Resolution
 import           SideDiff (getConflictDiffs, getConflictDiff2s)
 import           StrUtils (ensureNewline, stripNewline, unprefix)
 import           System.Directory (renameFile, removeFile, getCurrentDirectory)
@@ -243,10 +243,7 @@ exitProcess = exitWith . exitCodeOf
 main :: IO ()
 main =
   do  opts <- Opts.getOpts
-      colorEnable <-
-          case shouldUseColor opts of
-              Nothing -> shouldUseColorByTerminal
-              Just colorEnable -> return colorEnable
+      colorEnable <- maybe shouldUseColorByTerminal return (shouldUseColor opts)
       checkConflictStyle opts
       case mergeSpecificFile opts of
           Nothing -> mediateAll colorEnable opts
