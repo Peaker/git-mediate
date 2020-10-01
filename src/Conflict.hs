@@ -2,7 +2,7 @@
 
 module Conflict
     ( Conflict(..), LineNo
-    , bodyStrings, setBodyStrings
+    , bodies, setBodies, bodyStrings, setBodyStrings
     , pretty, prettyLines
     , parse
     , markerPrefix
@@ -28,14 +28,20 @@ data Conflict = Conflict
     } deriving (Show)
 
 -- traversal
-bodyStrings :: Applicative f => (String -> f String) -> Conflict -> f Conflict
-bodyStrings f c@Conflict{..} =
-    mk <$> traverse f cBodyA <*> traverse f cBodyBase <*> traverse f cBodyB
+bodies :: Applicative f => ([String] -> f [String]) -> Conflict -> f Conflict
+bodies f c@Conflict{..} =
+    mk <$> f cBodyA <*> f cBodyBase <*> f cBodyB
     where
         mk bodyA bodyBase bodyB =
             c{cBodyA=bodyA, cBodyBase=bodyBase, cBodyB=bodyB}
 
+bodyStrings :: Applicative f => (String -> f String) -> Conflict -> f Conflict
+bodyStrings = bodies . traverse
+
 -- setter:
+setBodies :: ([String] -> [String]) -> Conflict -> Conflict
+setBodies f = runIdentity . bodies (Identity . f)
+
 setBodyStrings :: (String -> String) -> Conflict -> Conflict
 setBodyStrings f = runIdentity . bodyStrings (Identity . f)
 
