@@ -12,3 +12,4 @@
 /stack.yaml.lock
 tags
 .ghcid
+.vscode/
