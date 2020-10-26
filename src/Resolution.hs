@@ -10,6 +10,7 @@ module Resolution
 
 import           Conflict (Conflict(..), Sides(..))
 import qualified Conflict
+import           Data.Foldable (Foldable(..))
 
 import           Prelude.Compat
 
@@ -91,6 +92,43 @@ untabifyStr size =
 untabify :: Int -> Conflict -> Conflict
 untabify = Conflict.setBodies . fmap . fmap . untabifyStr
 
+data LineEnding = LF | CRLF | Mixed
+    deriving (Eq, Ord)
+
+lineEnding :: String -> LineEnding
+lineEnding x@(_:_) | last x == '\r' = CRLF
+lineEnding _ = LF
+
+lineEndings :: [String] -> LineEnding
+lineEndings [] = Mixed
+lineEndings xs =
+    foldl1 f (map lineEnding xs)
+    where
+        f Mixed _ = Mixed
+        f x c
+            | x == c = x
+            | otherwise = Mixed
+
+allSame :: Eq a => [a] -> Bool
+allSame (x:y:rest) = x == y && allSame (y:rest)
+allSame _ = True
+
+lineBreakFix :: Conflict -> Conflict
+lineBreakFix c@Conflict{cBodies}
+    | any null (toList cBodies)
+    || allSame (toList endings) = c
+    | otherwise =
+        case resolveGen endings of
+        Just LF -> (Conflict.setBodies . fmap . fmap) removeCr c
+        Just CRLF -> (Conflict.setBodies . fmap . fmap) makeCr c
+        _ -> c
+    where
+        endings = fmap lineEndings cBodies
+        removeCr x@(_:_) | last x == '\r' = init x
+        removeCr x = x
+        makeCr x@(_:_) | last x == '\r' = x
+        makeCr x = x <> "\r"
+
 resolveContent :: Untabify -> [Either String Conflict] -> NewContent
 resolveContent (Untabify mUntabifySize) =
     foldMap go
@@ -98,7 +136,7 @@ resolveContent (Untabify mUntabifySize) =
         untabified = maybe id untabify mUntabifySize
         go (Left line) = NewContent mempty (unlines [line])
         go (Right conflict) =
-            case resolveConflict (untabified conflict) of
+            case (resolveConflict . lineBreakFix . untabified) conflict of
             NoResolution               -> NewContent (Result 0 0 1)
                                           (Conflict.pretty (untabified conflict))
             Resolution trivialLines    -> NewContent (Result 1 0 0) trivialLines
