@@ -6,6 +6,7 @@ module Environment
 
 import qualified Control.Exception as E
 import           Control.Monad (when, unless)
+import           Data.Functor ((<&>))
 import           Opts (Options(..))
 import           PPDiff (ColorEnable(..))
 import           StrUtils (stripNewline)
@@ -19,15 +20,15 @@ import           Prelude.Compat
 
 shouldUseColorByTerminal :: IO ColorEnable
 shouldUseColorByTerminal =
-    do  istty <- hSupportsANSI stdout
-        return $ if istty then EnableColor else DisableColor
+    hSupportsANSI stdout
+    <&> \istty -> if istty then EnableColor else DisableColor
 
 getConflictStyle :: IO String
 getConflictStyle =
     do  (exitCode, output, _) <- readProcessWithExitCode "git" ["config", "merge.conflictstyle"] stdin
         case exitCode of
-            ExitSuccess -> return $ stripNewline output
-            ExitFailure 1 -> return "unset"
+            ExitSuccess -> pure $ stripNewline output
+            ExitFailure 1 -> pure "unset"
             ExitFailure _ -> E.throwIO exitCode
     where
         stdin = ""
@@ -61,4 +62,4 @@ openEditor opts path
     | shouldUseEditor opts =
         do  editor <- getEnv "EDITOR"
             callProcess editor [path]
-    | otherwise = return ()
+    | otherwise = pure ()

@@ -82,4 +82,4 @@ getOpts =
         do
             putStrLn $ "git-mediate version " ++ versionString
             exitSuccess
-    CmdOptions o -> return o
+    CmdOptions o -> pure o

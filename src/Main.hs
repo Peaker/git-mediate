@@ -151,8 +151,8 @@ deleteModifyConflictAddMarkers :: FilePath -> IO ()
 deleteModifyConflictAddMarkers path =
     withAllStageFiles path $ \baseTmp mLocalTmp mRemoteTmp ->
     do  baseContent <- readFile baseTmp
-        localContent <- maybe (return "") readFile mLocalTmp
-        remoteContent <- maybe (return "") readFile mRemoteTmp
+        localContent <- foldMap readFile mLocalTmp
+        remoteContent <- foldMap readFile mRemoteTmp
         overwrite path $
             concat
             [ markerLine '<' "LOCAL"
@@ -188,7 +188,7 @@ getStatusPorcelain =
             -- "fatal: Not a git repository (or any of the parent directories): .git"
             hPutStr stderr statusStderr
             exitWith statusCode
-        return statusPorcelain
+        pure statusPorcelain
 
 getGitRootDir :: IO FilePath
 getGitRootDir =
@@ -243,7 +243,7 @@ exitProcess = exitWith . exitCodeOf
 main :: IO ()
 main =
   do  opts <- Opts.getOpts
-      colorEnable <- maybe shouldUseColorByTerminal return (shouldUseColor opts)
+      colorEnable <- maybe shouldUseColorByTerminal pure (shouldUseColor opts)
       checkConflictStyle opts
       case mergeSpecificFile opts of
           Nothing -> mediateAll colorEnable opts
