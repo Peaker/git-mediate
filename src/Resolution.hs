@@ -18,17 +18,24 @@ data Resolution
     | Resolution String
     | PartialResolution String
 
+resolveGen :: Eq a => Sides a -> Maybe a
+resolveGen (Sides a base b)
+    | a == base = Just b
+    | b == base = Just a
+    | a == b = Just a
+    | otherwise = Nothing
+
 resolveConflict :: Conflict -> Resolution
-resolveConflict conflict@Conflict {cBodies}
-    | sideA == sideBase = Resolution $ unlines sideB
-    | sideB == sideBase = Resolution $ unlines sideA
-    | sideA == sideB = Resolution $ unlines sideA
-    | matchTop > 0 || matchBottom > 0 =
-        PartialResolution $ unlines $
-        take matchTop sideA ++
-        Conflict.prettyLines ((Conflict.setBodies . fmap) unmatched conflict) ++
-        takeEnd matchBottom sideA
-    | otherwise = NoResolution
+resolveConflict conflict@Conflict {cBodies} =
+    case resolveGen cBodies of
+    Just r -> Resolution $ unlines r
+    Nothing
+        | matchTop > 0 || matchBottom > 0 ->
+            PartialResolution $ unlines $
+            take matchTop sideA ++
+            Conflict.prettyLines ((Conflict.setBodies . fmap) unmatched conflict) ++
+            takeEnd matchBottom sideA
+        | otherwise -> NoResolution
     where
         Sides {sideA, sideBase, sideB} = cBodies
         match base a b
