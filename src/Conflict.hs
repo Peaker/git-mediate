@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, NoImplicitPrelude, DeriveTraversable, NamedFieldPuns #-}
+{-# LANGUAGE FlexibleContexts, NoImplicitPrelude, DeriveTraversable, NamedFieldPuns, DerivingVia, DeriveGeneric #-}
 
 module Conflict
     ( Conflict(..), Sides(..), LineNo
@@ -10,8 +10,11 @@ module Conflict
 
 import Control.Monad.State (MonadState, state, evalStateT)
 import Control.Monad.Writer (runWriter, tell)
+import Data.Foldable (Foldable(..))
 import Data.Functor.Identity (Identity(..))
 import Data.List (isPrefixOf)
+import Generic.Data (Generically1(..))
+import GHC.Generics (Generic1)
 
 import Prelude.Compat
 
@@ -21,7 +24,8 @@ data Sides a = Sides
     { sideA :: a
     , sideBase :: a
     , sideB :: a
-    } deriving (Functor, Foldable, Traversable, Show, Eq, Ord)
+    } deriving (Functor, Foldable, Traversable, Show, Eq, Ord, Generic1)
+    deriving Applicative via Generically1 Sides
 
 data Conflict = Conflict
     { cMarkers   :: Sides (LineNo, String) -- The markers at the beginning of sections
@@ -38,15 +42,8 @@ setBodies :: (Sides [String] -> Sides [String]) -> Conflict -> Conflict
 setBodies f = runIdentity . bodies (Identity . f)
 
 prettyLines :: Conflict -> [String]
-prettyLines Conflict {cMarkers, cMarkerEnd, cBodies} =
-    concat
-    [ markerA    : bodyA
-    , markerBase : bodyBase
-    , markerB    : bodyB
-    , [snd cMarkerEnd]
-    ] where
-        Sides markerA markerBase markerB = fmap snd cMarkers
-        Sides bodyA bodyBase bodyB = cBodies
+prettyLines Conflict{cMarkers, cMarkerEnd, cBodies} =
+    concat (toList ((:) <$> (snd <$> cMarkers) <*> cBodies)) <> [snd cMarkerEnd]
 
 pretty :: Conflict -> String
 pretty = unlines . prettyLines
@@ -88,7 +85,7 @@ parseConflict markerA =
         pure Conflict
             { cMarkers    = Sides markerA markerBase markerB
             , cMarkerEnd  = markerEnd
-            , cBodies     = Sides (snd <$> linesA) (snd <$> linesBase) (snd <$> linesB)
+            , cBodies     = fmap snd <$> Sides linesA linesBase linesB
             }
 
 parseFromNumberedLines :: [(LineNo, String)] -> [Either String Conflict]
@@ -105,5 +102,4 @@ parseFromNumberedLines =
                             loop
 
 parse :: String -> [Either String Conflict]
-parse input =
-    parseFromNumberedLines (zip [1..] (lines input))
+parse = parseFromNumberedLines . zip [1..] . lines
