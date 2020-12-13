@@ -10,7 +10,6 @@ module Conflict
 
 import Control.Monad.State (MonadState, state, evalStateT)
 import Control.Monad.Writer (runWriter, tell)
-import Data.Foldable (Foldable(..))
 import Data.Functor.Identity (Identity(..))
 import Data.List (isPrefixOf)
 import Generic.Data (Generically1(..))
@@ -43,7 +42,7 @@ setBodies f = runIdentity . bodies (Identity . f)
 
 prettyLines :: Conflict -> [String]
 prettyLines Conflict{cMarkers, cMarkerEnd, cBodies} =
-    concat (toList ((:) <$> (snd <$> cMarkers) <*> cBodies)) <> [snd cMarkerEnd]
+    concat ((:) <$> (snd <$> cMarkers) <*> cBodies) <> [snd cMarkerEnd]
 
 pretty :: Conflict -> String
 pretty = unlines . prettyLines
