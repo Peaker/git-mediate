@@ -57,11 +57,9 @@ parser =
                         <> O.help "Convert tabs to the spaces at the tab stops for the given tab size"
                     )
                 )
-            <*> ( ( Just <$>
-                    O.strOption
-                    (O.long "merge-file" <> O.short 'f' <> O.help "Merge a specific file")
-                  )
-                  <|> pure Nothing
+            <*> O.optional
+                ( O.strOption
+                    ( O.long "merge-file" <> O.short 'f' <> O.help "Merge a specific file")
                 )
             )
 
