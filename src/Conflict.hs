@@ -1,8 +1,8 @@
-{-# LANGUAGE FlexibleContexts, NoImplicitPrelude, RecordWildCards #-}
+{-# LANGUAGE FlexibleContexts, NoImplicitPrelude, DeriveTraversable, NamedFieldPuns #-}
 
 module Conflict
-    ( Conflict(..), LineNo
-    , bodies, setBodies, bodyStrings, setBodyStrings
+    ( Conflict(..), Sides(..), LineNo
+    , bodies, setBodies
     , pretty, prettyLines
     , parse
     , markerPrefix
@@ -17,42 +17,36 @@ import Prelude.Compat
 
 type LineNo = Int
 
+data Sides a = Sides
+    { sideA :: a
+    , sideBase :: a
+    , sideB :: a
+    } deriving (Functor, Foldable, Traversable, Show, Eq, Ord)
+
 data Conflict = Conflict
-    { cMarkerA    :: (LineNo, String) -- <<<<<<<....
-    , cMarkerBase :: (LineNo, String) -- |||||||....
-    , cMarkerB    :: (LineNo, String) -- =======....
-    , cMarkerEnd  :: (LineNo, String) -- >>>>>>>....
-    , cBodyA      :: [String]
-    , cBodyBase   :: [String]
-    , cBodyB      :: [String]
+    { cMarkers   :: Sides (LineNo, String) -- The markers at the beginning of sections
+    , cMarkerEnd :: (LineNo, String)       -- The ">>>>>>>...." marker at the end of the conflict
+    , cBodies    :: Sides [String]
     } deriving (Show)
 
 -- traversal
-bodies :: Applicative f => ([String] -> f [String]) -> Conflict -> f Conflict
-bodies f c@Conflict{..} =
-    mk <$> f cBodyA <*> f cBodyBase <*> f cBodyB
-    where
-        mk bodyA bodyBase bodyB =
-            c{cBodyA=bodyA, cBodyBase=bodyBase, cBodyB=bodyB}
-
-bodyStrings :: Applicative f => (String -> f String) -> Conflict -> f Conflict
-bodyStrings = bodies . traverse
+bodies :: Applicative f => (Sides [String] -> f (Sides [String])) -> Conflict -> f Conflict
+bodies f c@Conflict{cBodies} = (\x -> c{cBodies = x}) <$> f cBodies
 
 -- setter:
-setBodies :: ([String] -> [String]) -> Conflict -> Conflict
+setBodies :: (Sides [String] -> Sides [String]) -> Conflict -> Conflict
 setBodies f = runIdentity . bodies (Identity . f)
 
-setBodyStrings :: (String -> String) -> Conflict -> Conflict
-setBodyStrings f = runIdentity . bodyStrings (Identity . f)
-
 prettyLines :: Conflict -> [String]
-prettyLines Conflict {..} =
+prettyLines Conflict {cMarkers, cMarkerEnd, cBodies} =
     concat
-    [ snd cMarkerA    : cBodyA
-    , snd cMarkerBase : cBodyBase
-    , snd cMarkerB    : cBodyB
+    [ markerA    : bodyA
+    , markerBase : bodyBase
+    , markerB    : bodyB
     , [snd cMarkerEnd]
-    ]
+    ] where
+        Sides markerA markerBase markerB = fmap snd cMarkers
+        Sides bodyA bodyBase bodyB = cBodies
 
 pretty :: Conflict -> String
 pretty = unlines . prettyLines
@@ -92,13 +86,9 @@ parseConflict markerA =
         (linesBase, markerB)    <- readUpToMarker '='
         (linesB   , markerEnd)  <- readUpToMarker '>'
         pure Conflict
-            { cMarkerA    = markerA
-            , cMarkerBase = markerBase
-            , cMarkerB    = markerB
+            { cMarkers    = Sides markerA markerBase markerB
             , cMarkerEnd  = markerEnd
-            , cBodyA      = map snd linesA
-            , cBodyB      = map snd linesB
-            , cBodyBase   = map snd linesBase
+            , cBodies     = Sides (snd <$> linesA) (snd <$> linesBase) (snd <$> linesB)
             }
 
 parseFromNumberedLines :: [(LineNo, String)] -> [Either String Conflict]

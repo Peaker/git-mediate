@@ -1,4 +1,4 @@
-{-# LANGUAGE NoImplicitPrelude, RecordWildCards, BangPatterns #-}
+{-# LANGUAGE NoImplicitPrelude, BangPatterns, NamedFieldPuns #-}
 
 module Resolution
     ( Result(..)
@@ -8,7 +8,7 @@ module Resolution
     , fullySuccessful
     ) where
 
-import           Conflict (Conflict(..))
+import           Conflict (Conflict(..), Sides(..))
 import qualified Conflict
 
 import           Prelude.Compat
@@ -19,27 +19,24 @@ data Resolution
     | PartialResolution String
 
 resolveConflict :: Conflict -> Resolution
-resolveConflict conflict@Conflict{..}
-    | cBodyA == cBodyBase = Resolution $ unlines cBodyB
-    | cBodyB == cBodyBase = Resolution $ unlines cBodyA
-    | cBodyA == cBodyB = Resolution $ unlines cBodyA
+resolveConflict conflict@Conflict {cBodies}
+    | sideA == sideBase = Resolution $ unlines sideB
+    | sideB == sideBase = Resolution $ unlines sideA
+    | sideA == sideB = Resolution $ unlines sideA
     | matchTop > 0 || matchBottom > 0 =
         PartialResolution $ unlines $
-        take matchTop cBodyA ++
-        Conflict.prettyLines conflict
-        { cBodyA = unmatched cBodyA
-        , cBodyBase = unmatched cBodyBase
-        , cBodyB = unmatched cBodyB
-        } ++
-        takeEnd matchBottom cBodyA
+        take matchTop sideA ++
+        Conflict.prettyLines ((Conflict.setBodies . fmap) unmatched conflict) ++
+        takeEnd matchBottom sideA
     | otherwise = NoResolution
     where
+        Sides {sideA, sideBase, sideB} = cBodies
         match base a b
             | null base = lengthOfCommonPrefix a b
             | otherwise = minimum $ map (lengthOfCommonPrefix base) [a, b]
-        matchTop = match cBodyBase cBodyA cBodyB
+        matchTop = match sideBase sideA sideB
         revBottom = reverse . drop matchTop
-        matchBottom = match (revBottom cBodyBase) (revBottom cBodyA) (revBottom cBodyB)
+        matchBottom = match (revBottom sideBase) (revBottom sideA) (revBottom sideB)
         dropEnd count xs = take (length xs - count) xs
         takeEnd count xs = drop (length xs - count) xs
         unmatched xs = drop matchTop $ dropEnd matchBottom xs
@@ -85,7 +82,7 @@ untabifyStr size =
         go _ [] = []
 
 untabify :: Int -> Conflict -> Conflict
-untabify = Conflict.setBodyStrings . untabifyStr
+untabify = Conflict.setBodies . fmap . fmap . untabifyStr
 
 resolveContent :: Untabify -> [Either String Conflict] -> NewContent
 resolveContent (Untabify mUntabifySize) =
