@@ -17,7 +17,7 @@ import           Resolution (Result(..), NewContent(..), Untabify(..))
 import qualified Resolution
 import           SideDiff (getConflictDiffs, getConflictDiff2s)
 import           StrUtils (ensureNewline, stripNewline, unprefix)
-import           System.Directory (renameFile, removeFile, getCurrentDirectory)
+import           System.Directory (renameFile, removeFile, getCurrentDirectory, getPermissions, setPermissions)
 import           System.Exit (ExitCode(..), exitWith)
 import           System.FilePath ((<.>), makeRelative, joinPath, splitPath)
 import qualified System.FilePath as FilePath
@@ -58,8 +58,10 @@ dumpAndOpenEditor colorEnable opts path conflicts =
 
 overwrite :: FilePath -> String -> IO ()
 overwrite fileName newContent =
-    do  renameFile fileName bkup
+    do  oldPermissions <- getPermissions fileName
+        renameFile fileName bkup
         writeFile fileName newContent
+        setPermissions fileName oldPermissions
         removeFile bkup
     where
         bkup = fileName <.> "bk"
