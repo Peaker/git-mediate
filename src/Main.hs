@@ -204,9 +204,13 @@ makeFilesMatchingPrefixes =
       rootDir <- getGitRootDir
       let rootRelativeFiles =
               filterM (fmap not . isDirectory) . map (rootDir </>)
+      let decode x =
+              case reads x of
+              [(r, "")] -> r
+              _ -> x
       let firstMatchingPrefix :: [String] -> String -> Maybe String
           firstMatchingPrefix prefixes =
-              asum . traverse unprefix prefixes
+              fmap decode . asum . traverse unprefix prefixes
       let filesMatchingPrefixes :: [String] -> IO [FilePath]
           filesMatchingPrefixes prefixes =
               rootRelativeFiles . mapMaybe (firstMatchingPrefix prefixes)
