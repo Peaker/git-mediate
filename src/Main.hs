@@ -6,6 +6,7 @@ import           Conflict (Conflict(..))
 import qualified Conflict
 import qualified Control.Exception as E
 import           Control.Monad (when, unless, filterM)
+import           Data.Algorithm.Diff (Diff, PolyDiff(..))
 import           Data.Foldable (asum, traverse_)
 import           Data.List (isPrefixOf)
 import           Data.Maybe (mapMaybe)
@@ -34,6 +35,14 @@ gitAdd :: FilePath -> IO ()
 gitAdd fileName =
     callProcess "git" ["add", "--", fileName]
 
+trimDiff :: Int -> [Diff a] -> [Diff a]
+trimDiff contextLen =
+    reverse . f . reverse . f
+    where
+        f l = drop (length (takeWhile both l) - contextLen) l
+        both Both{} = True
+        both _ = False
+
 dumpDiffs :: ColorEnable -> Options -> FilePath -> Int -> (Int, Conflict) -> IO ()
 dumpDiffs colorEnable opts filePath count (idx, conflict) =
     do
@@ -44,7 +53,7 @@ dumpDiffs colorEnable opts filePath count (idx, conflict) =
         dumpDiff (side, (lineNo, marker), diff) =
             do  putStrLn $ concat
                     [filePath, ":", show lineNo, ":Diff", show side, ": ", marker]
-                putStr $ unlines $ map (ppDiff colorEnable) diff
+                putStr $ unlines $ map (ppDiff colorEnable) (trimDiff (diffsContext opts) diff)
         dumpDiff2 ((lineNoA, markerA), (lineNoB, markerB), diff) =
             do  putStrLn $ concat [filePath, ":", show lineNoA, " <->", markerA]
                 putStrLn $ concat [filePath, ":", show lineNoB, ": ", markerB]
