@@ -20,6 +20,7 @@ data Options = Options
     , shouldSetConflictStyle :: Bool
     , untabify :: Maybe Int
     , mergeSpecificFile :: Maybe FilePath
+    , diffsContext :: Int
     }
 
 data CmdArgs = CmdVersion | CmdOptions Options
@@ -60,6 +61,10 @@ parser =
             <*> O.optional
                 ( O.strOption
                     ( O.long "merge-file" <> O.short 'f' <> O.help "Merge a specific file")
+                )
+            <*> O.option O.auto
+                (O.long "context" <> O.metavar "LINECOUNT" <> O.showDefault <> O.value 3
+                    <> O.help "Number of context lines around dumped diffs"
                 )
             )
 
