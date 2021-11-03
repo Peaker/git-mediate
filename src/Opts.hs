@@ -63,7 +63,7 @@ parser =
                     ( O.long "merge-file" <> O.short 'f' <> O.help "Merge a specific file")
                 )
             <*> O.option O.auto
-                (O.long "context" <> O.metavar "LINECOUNT" <> O.showDefault <> O.value 3
+                (O.long "context" <> O.short 'U' <> O.metavar "LINECOUNT" <> O.showDefault <> O.value 3
                     <> O.help "Number of context lines around dumped diffs"
                 )
             )
