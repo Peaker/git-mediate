@@ -5,13 +5,12 @@ module Conflict
     , bodies, setBodies
     , pretty, prettyLines
     , parse
-    , markerPrefix
     ) where
 
 import Control.Monad.State (MonadState, state, evalStateT)
 import Control.Monad.Writer (runWriter, tell)
 import Data.Functor.Identity (Identity(..))
-import Data.List (isPrefixOf)
+import Data.Maybe (fromMaybe)
 import Generic.Data (Generically1(..))
 import GHC.Generics (Generic1)
 
@@ -47,12 +46,22 @@ prettyLines Conflict{cMarkers, cMarkerEnd, cBodies} =
 pretty :: Conflict -> String
 pretty = unlines . prettyLines
 
--- '>' -> ">>>>>>>"
-markerPrefix :: Char -> String
-markerPrefix = replicate 7
-
-breakUpToMarker :: MonadState [(LineNo, String)] m => Char -> m [(LineNo, String)]
-breakUpToMarker c = state (break ((markerPrefix c `isPrefixOf`) . snd))
+breakUpToMarker ::
+    MonadState [(LineNo, String)] m =>
+    Char -> Maybe Int -> m [(LineNo, String)]
+breakUpToMarker c mCount =
+    state (break cond)
+    where
+        count = fromMaybe 7 mCount
+        prefix = replicate count c
+        cond (_, line) =
+            pre == prefix && rightCount
+            where
+                (pre, post) = splitAt count line
+                rightCount =
+                    case (mCount, post) of
+                    (Just{}, (x:_)) -> c /= x
+                    _ -> True
 
 readHead :: MonadState [a] m => m (Maybe a)
 readHead = state f
@@ -60,13 +69,17 @@ readHead = state f
         f [] = (Nothing, [])
         f (l:ls) = (Just l, ls)
 
-tryReadUpToMarker :: MonadState [(LineNo, String)] m => Char -> m ([(LineNo, String)], Maybe (LineNo, String))
-tryReadUpToMarker c =
-    (,) <$> breakUpToMarker c <*> readHead
+tryReadUpToMarker ::
+    MonadState [(LineNo, String)] m =>
+    Char -> Maybe Int -> m ([(LineNo, String)], Maybe (LineNo, String))
+tryReadUpToMarker c mCount =
+    (,) <$> breakUpToMarker c mCount <*> readHead
 
-readUpToMarker :: MonadState [(LineNo, String)] m => Char -> m ([(LineNo, String)], (LineNo, String))
-readUpToMarker c = do
-    res <- tryReadUpToMarker c
+readUpToMarker ::
+    MonadState [(LineNo, String)] m =>
+    Char -> Maybe Int -> m ([(LineNo, String)], (LineNo, String))
+readUpToMarker c mCount = do
+    res <- tryReadUpToMarker c mCount
     case res of
         (ls, Just h)  -> pure (ls, h)
         (ls, Nothing) ->
@@ -78,21 +91,23 @@ readUpToMarker c = do
 
 parseConflict :: MonadState [(LineNo, String)] m => (LineNo, String) -> m Conflict
 parseConflict markerA =
-    do  (linesA   , markerBase) <- readUpToMarker '|'
-        (linesBase, markerB)    <- readUpToMarker '='
-        (linesB   , markerEnd)  <- readUpToMarker '>'
+    do  (linesA   , markerBase) <- readUpToMarker '|' markerCount
+        (linesBase, markerB)    <- readUpToMarker '=' markerCount
+        (linesB   , markerEnd)  <- readUpToMarker '>' markerCount
         pure Conflict
             { cMarkers    = Sides markerA markerBase markerB
             , cMarkerEnd  = markerEnd
             , cBodies     = fmap snd <$> Sides linesA linesBase linesB
             }
+    where
+        markerCount = Just (length (takeWhile (== '<') (snd markerA)))
 
 parseFromNumberedLines :: [(LineNo, String)] -> [Either String Conflict]
 parseFromNumberedLines =
     snd . runWriter . evalStateT loop
     where
         loop =
-            do  (ls, mMarkerA) <- tryReadUpToMarker '<'
+            do  (ls, mMarkerA) <- tryReadUpToMarker '<' Nothing
                 tell $ map (Left . snd) ls
                 case mMarkerA of
                     Nothing -> pure ()

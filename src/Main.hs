@@ -28,8 +28,12 @@ import           System.Process (callProcess, readProcess, readProcessWithExitCo
 
 import           Prelude.Compat
 
+-- '>' -> ">>>>>>>"
+markerPrefix :: Char -> String
+markerPrefix = replicate 7
+
 markerLine :: Char -> String -> String
-markerLine c str = Conflict.markerPrefix c ++ " " ++ str ++ "\n"
+markerLine c str = markerPrefix c ++ " " ++ str ++ "\n"
 
 gitAdd :: FilePath -> IO ()
 gitAdd fileName =
@@ -178,7 +182,7 @@ deleteModifyConflictAddMarkers path =
 deleteModifyConflictHandle :: FilePath -> IO ()
 deleteModifyConflictHandle path =
     do  marked <-
-            any (Conflict.markerPrefix '<' `isPrefixOf`) . lines <$> readFile path
+            any (markerPrefix '<' `isPrefixOf`) . lines <$> readFile path
         unless marked $
             do  putStrLn $ show path ++ " has a delete/modify conflict. Adding conflict markers"
                 deleteModifyConflictAddMarkers path
