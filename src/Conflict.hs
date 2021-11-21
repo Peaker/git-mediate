@@ -2,7 +2,7 @@
 
 module Conflict
     ( Conflict(..), Sides(..), LineNo
-    , bodies, setBodies
+    , setBodies
     , pretty, prettyLines
     , parse
     ) where
