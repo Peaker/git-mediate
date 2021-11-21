@@ -66,7 +66,7 @@ breakUpToMarker c mCount =
                 (pre, post) = splitAt count line
                 rightCount =
                     case (mCount, post) of
-                    (Just{}, (x:_)) -> c /= x
+                    (Just{}, x:_) -> c /= x
                     _ -> True
 
 readHead :: MonadState [a] m => m (Maybe a)
