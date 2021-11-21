@@ -2,7 +2,7 @@
 
 module Conflict
     ( Conflict(..), Sides(..), LineNo
-    , setBodies
+    , setEachBody, setStrings
     , pretty, prettyLines
     , parse
     ) where
@@ -38,6 +38,12 @@ bodies f c@Conflict{cBodies} = (\x -> c{cBodies = x}) <$> f cBodies
 -- setter:
 setBodies :: (Sides [String] -> Sides [String]) -> Conflict -> Conflict
 setBodies f = runIdentity . bodies (Identity . f)
+
+setEachBody :: ([String] -> [String]) -> Conflict -> Conflict
+setEachBody = setBodies . fmap
+
+setStrings :: (String -> String) -> Conflict -> Conflict
+setStrings = setEachBody . map
 
 prettyLines :: Conflict -> [String]
 prettyLines Conflict{cMarkers, cMarkerEnd, cBodies} =

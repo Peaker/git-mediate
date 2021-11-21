@@ -34,7 +34,7 @@ resolveConflict conflict@Conflict {cBodies} =
         | matchTop > 0 || matchBottom > 0 ->
             PartialResolution $ unlines $
             take matchTop sideA ++
-            Conflict.prettyLines ((Conflict.setBodies . fmap) unmatched conflict) ++
+            Conflict.prettyLines (Conflict.setEachBody unmatched conflict) ++
             takeEnd matchBottom sideA
         | otherwise -> NoResolution
     where
@@ -90,7 +90,7 @@ untabifyStr size =
         go _ [] = []
 
 untabify :: Int -> Conflict -> Conflict
-untabify = Conflict.setBodies . fmap . fmap . untabifyStr
+untabify = Conflict.setStrings . untabifyStr
 
 data LineEnding = LF | CRLF | Mixed
     deriving (Eq, Ord)
@@ -119,8 +119,8 @@ lineBreakFix c@Conflict{cBodies}
     || allSame (toList endings) = c
     | otherwise =
         case resolveGen endings of
-        Just LF -> (Conflict.setBodies . fmap . fmap) removeCr c
-        Just CRLF -> (Conflict.setBodies . fmap . fmap) makeCr c
+        Just LF -> Conflict.setStrings removeCr c
+        Just CRLF -> Conflict.setStrings makeCr c
         _ -> c
     where
         endings = fmap lineEndings cBodies
