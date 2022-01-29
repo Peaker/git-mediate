@@ -40,7 +40,7 @@ setConflictStyle =
 checkConflictStyle :: Options -> IO ()
 checkConflictStyle opts =
     do  conflictStyle <- getConflictStyle
-        when (conflictStyle /= "diff3") $
+        unless (conflictStyle `elem` ["diff3", "zdiff3"]) $
             do  unless (shouldSetConflictStyle opts) $
                     fail $ concat
                     [ "merge.conflictstyle must be diff3 but is "
