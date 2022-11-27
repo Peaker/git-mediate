@@ -7,6 +7,7 @@ import qualified Conflict
 import qualified Control.Exception as E
 import           Control.Monad (when, unless, filterM)
 import           Data.Algorithm.Diff (Diff, PolyDiff(..))
+import           Data.Either (rights)
 import           Data.Foldable (asum, traverse_)
 import           Data.List (isPrefixOf)
 import           Data.Maybe (mapMaybe)
@@ -108,7 +109,7 @@ handleFileResult colorEnable opts fileName (NewContent result newContent)
         allGood = Resolution.fullySuccessful result
         doDump =
             dumpAndOpenEditor colorEnable opts fileName
-            [ conflict | Right conflict <- Conflict.parse newContent ]
+            (rights (Conflict.parse newContent))
         Result
             { _resolvedSuccessfully = successes
             , _reducedConflicts = reductions
