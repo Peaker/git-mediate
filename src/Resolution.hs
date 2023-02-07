@@ -1,4 +1,4 @@
-{-# LANGUAGE NoImplicitPrelude, BangPatterns, NamedFieldPuns #-}
+{-# LANGUAGE NoImplicitPrelude, BangPatterns, NamedFieldPuns, DerivingVia, DeriveGeneric #-}
 
 module Resolution
     ( Result(..)
@@ -11,6 +11,7 @@ module Resolution
 import           Conflict (Conflict(..), Sides(..))
 import qualified Conflict
 import           Data.Foldable (Foldable(..))
+import           Generic.Data (Generic, Generically(..))
 
 import           Prelude.Compat
 
@@ -70,11 +71,8 @@ data NewContent = NewContent
     { _result :: !Result
     , _newContent :: !String
     }
-
-instance Semigroup NewContent where
-    NewContent x0 y0 <> NewContent x1 y1 = NewContent (x0<>x1) (y0<>y1)
-
-instance Monoid NewContent where mempty = NewContent mempty mempty
+    deriving Generic
+    deriving (Semigroup, Monoid) via Generically NewContent
 
 newtype Untabify = Untabify { mUntabifySize :: Maybe Int }
 
