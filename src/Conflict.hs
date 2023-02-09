@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts, NoImplicitPrelude, DeriveTraversable, NamedFieldPuns, DerivingVia, DeriveGeneric, OverloadedRecordDot #-}
 
 module Conflict
-    ( Conflict(..), Sides(..), LineNo
+    ( Conflict(..), Sides(..), SrcContent(..)
     , setEachBody, setStrings
     , pretty, prettyLines
     , parse
@@ -15,8 +15,6 @@ import GHC.Generics (Generic1)
 
 import Prelude.Compat
 
-type LineNo = Int
-
 data Sides a = Sides
     { sideA :: a
     , sideBase :: a
@@ -24,11 +22,16 @@ data Sides a = Sides
     } deriving (Functor, Foldable, Traversable, Show, Eq, Ord, Generic1)
     deriving Applicative via Generically1 Sides
 
+data SrcContent = SrcContent
+    { lineNo :: Int
+    , content :: String
+    } deriving Show
+
 data Conflict = Conflict
-    { markers   :: Sides (LineNo, String) -- The markers at the beginning of sections
-    , markerEnd :: (LineNo, String)       -- The ">>>>>>>...." marker at the end of the conflict
+    { markers   :: Sides SrcContent -- The markers at the beginning of sections
+    , markerEnd :: SrcContent       -- The ">>>>>>>...." marker at the end of the conflict
     , bodies    :: Sides [String]
-    } deriving (Show)
+    } deriving Show
 
 setBodies :: (Sides [String] -> Sides [String]) -> Conflict -> Conflict
 setBodies f c = c{bodies = f c.bodies}
@@ -41,23 +44,23 @@ setStrings = setEachBody . map
 
 prettyLines :: Conflict -> [String]
 prettyLines c =
-    concat ((:) <$> (snd <$> c.markers) <*> c.bodies) <> [snd c.markerEnd]
+    concat ((:) <$> ((.content) <$> c.markers) <*> c.bodies) <> [c.markerEnd.content]
 
 pretty :: Conflict -> String
 pretty = unlines . prettyLines
 
 breakUpToMarker ::
-    MonadState [(LineNo, String)] m =>
-    Char -> Maybe Int -> m [(LineNo, String)]
+    MonadState [SrcContent] m =>
+    Char -> Maybe Int -> m [SrcContent]
 breakUpToMarker c mCount =
     state (break cond)
     where
         count = fromMaybe 7 mCount
         prefix = replicate count c
-        cond (_, line) =
+        cond l =
             pre == prefix && rightCount
             where
-                (pre, post) = splitAt count line
+                (pre, post) = splitAt count l.content
                 rightCount =
                     case (mCount, post) of
                     (Just{}, x:_) -> c /= x
@@ -70,14 +73,14 @@ readHead = state f
         f (l:ls) = (Just l, ls)
 
 tryReadUpToMarker ::
-    MonadState [(LineNo, String)] m =>
-    Char -> Maybe Int -> m ([(LineNo, String)], Maybe (LineNo, String))
+    MonadState [SrcContent] m =>
+    Char -> Maybe Int -> m ([SrcContent], Maybe SrcContent)
 tryReadUpToMarker c mCount =
     (,) <$> breakUpToMarker c mCount <*> readHead
 
 readUpToMarker ::
-    MonadState [(LineNo, String)] m =>
-    Char -> Maybe Int -> m ([(LineNo, String)], (LineNo, String))
+    MonadState [SrcContent] m =>
+    Char -> Maybe Int -> m ([SrcContent], SrcContent)
 readUpToMarker c mCount = do
     res <- tryReadUpToMarker c mCount
     case res of
@@ -86,10 +89,10 @@ readUpToMarker c mCount = do
             error $ concat
             [ "Parse error: failed reading up to marker: "
             , show c, ", got:"
-            , concatMap (\(l,s) -> "\n" ++ show l ++ "\t" ++ s) $ take 5 ls
+            , concatMap (\l -> "\n" ++ show l.lineNo ++ "\t" ++ l.content) $ take 5 ls
             ]
 
-parseConflict :: MonadState [(LineNo, String)] m => (LineNo, String) -> m Conflict
+parseConflict :: MonadState [SrcContent] m => SrcContent -> m Conflict
 parseConflict markerA =
     do  (linesA   , markerBase) <- readUpToMarker '|' markerCount
         (linesBase, markerB)    <- readUpToMarker '=' markerCount
@@ -97,18 +100,18 @@ parseConflict markerA =
         pure Conflict
             { markers    = Sides markerA markerBase markerB
             , markerEnd
-            , bodies     = fmap snd <$> Sides linesA linesBase linesB
+            , bodies     = fmap (.content) <$> Sides linesA linesBase linesB
             }
     where
-        markerCount = Just (length (takeWhile (== '<') (snd markerA)))
+        markerCount = Just (length (takeWhile (== '<') markerA.content))
 
-parseFromNumberedLines :: [(LineNo, String)] -> [Either String Conflict]
+parseFromNumberedLines :: [SrcContent] -> [Either String Conflict]
 parseFromNumberedLines =
     snd . runWriter . evalStateT loop
     where
         loop =
             do  (ls, mMarkerA) <- tryReadUpToMarker '<' Nothing
-                tell $ map (Left . snd) ls
+                tell $ map (Left . (.content)) ls
                 case mMarkerA of
                     Nothing -> pure ()
                     Just markerA ->
@@ -116,4 +119,4 @@ parseFromNumberedLines =
                             loop
 
 parse :: String -> [Either String Conflict]
-parse = parseFromNumberedLines . zip [1..] . lines
+parse = parseFromNumberedLines . zipWith SrcContent [1..] . lines
