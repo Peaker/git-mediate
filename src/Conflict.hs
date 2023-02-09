@@ -9,7 +9,6 @@ module Conflict
 
 import Control.Monad.State (MonadState, state, evalStateT)
 import Control.Monad.Writer (runWriter, tell)
-import Data.Functor.Identity (Identity(..))
 import Data.Maybe (fromMaybe)
 import Generic.Data (Generically1(..))
 import GHC.Generics (Generic1)
@@ -31,13 +30,8 @@ data Conflict = Conflict
     , cBodies    :: Sides [String]
     } deriving (Show)
 
--- traversal
-bodies :: Applicative f => (Sides [String] -> f (Sides [String])) -> Conflict -> f Conflict
-bodies f c@Conflict{cBodies} = (\x -> c{cBodies = x}) <$> f cBodies
-
--- setter:
 setBodies :: (Sides [String] -> Sides [String]) -> Conflict -> Conflict
-setBodies f = runIdentity . bodies (Identity . f)
+setBodies f c@Conflict{cBodies} = c{cBodies = f cBodies}
 
 setEachBody :: ([String] -> [String]) -> Conflict -> Conflict
 setEachBody = setBodies . fmap
