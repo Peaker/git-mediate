@@ -1,4 +1,4 @@
-{-# LANGUAGE NoImplicitPrelude, OverloadedRecordDot #-}
+{-# LANGUAGE NoImplicitPrelude, OverloadedRecordDot, FlexibleContexts #-}
 
 module Main (main) where
 
@@ -17,7 +17,7 @@ import           Opts (Options(..))
 import           PPDiff (ppDiff, ColorEnable(..))
 import           Resolution (Result(..), NewContent(..), Untabify(..))
 import qualified Resolution
-import           SideDiff (getConflictDiffs, getConflictDiff2s)
+import           SideDiff (SideDiff(..), getConflictDiffs, getConflictDiff2s)
 import           StrUtils (ensureNewline, stripNewline, unprefix)
 import           System.Directory (renameFile, removeFile, getCurrentDirectory, getPermissions, setPermissions)
 import           System.Exit (ExitCode(..), exitWith)
@@ -55,14 +55,14 @@ dumpDiffs colorEnable opts filePath count (idx, conflict) =
         when opts.shouldDumpDiffs $ traverse_ dumpDiff $ getConflictDiffs conflict
         when opts.shouldDumpDiff2 $ dumpDiff2 $ getConflictDiff2s conflict
     where
-        dumpDiff (side, (lineNo, marker), diff) =
+        dumpDiff d =
             do  putStrLn $ concat
-                    [filePath, ":", show lineNo, ":Diff", show side, ": ", marker]
-                putStr $ unlines $ map (ppDiff colorEnable) (trimDiff opts.diffsContext diff)
-        dumpDiff2 ((lineNoA, markerA), (lineNoB, markerB), diff) =
-            do  putStrLn $ concat [filePath, ":", show lineNoA, " <->", markerA]
-                putStrLn $ concat [filePath, ":", show lineNoB, ": ", markerB]
-                putStr $ unlines $ map (ppDiff colorEnable) diff
+                    [filePath, ":", show d.marker.lineNo, ":Diff", show d.side, ": ", d.marker.content]
+                putStr $ unlines $ map (ppDiff colorEnable) (trimDiff opts.diffsContext d.diff)
+        dumpDiff2 (markerA, markerB, d) =
+            do  putStrLn $ concat [filePath, ":", show markerA.lineNo, " <->", markerA.content]
+                putStrLn $ concat [filePath, ":", show markerB.lineNo, ": ", markerB.content]
+                putStr $ unlines $ map (ppDiff colorEnable) d
 
 dumpAndOpenEditor :: ColorEnable -> Options -> FilePath -> [Conflict] -> IO ()
 dumpAndOpenEditor colorEnable opts path conflicts =
