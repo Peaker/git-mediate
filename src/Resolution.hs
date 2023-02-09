@@ -1,4 +1,4 @@
-{-# LANGUAGE NoImplicitPrelude, BangPatterns, NamedFieldPuns, DerivingVia, DeriveGeneric #-}
+{-# LANGUAGE NoImplicitPrelude, BangPatterns, DerivingVia, DeriveGeneric, OverloadedRecordDot #-}
 
 module Resolution
     ( Result(..)
@@ -28,24 +28,23 @@ resolveGen (Sides a base b)
     | otherwise = Nothing
 
 resolveConflict :: Conflict -> Resolution
-resolveConflict conflict@Conflict {bodies} =
-    case resolveGen bodies of
+resolveConflict c =
+    case resolveGen c.bodies of
     Just r -> Resolution $ unlines r
     Nothing
         | matchTop > 0 || matchBottom > 0 ->
             PartialResolution $ unlines $
-            take matchTop sideA ++
-            Conflict.prettyLines (Conflict.setEachBody unmatched conflict) ++
-            takeEnd matchBottom sideA
+            take matchTop c.bodies.sideA ++
+            Conflict.prettyLines (Conflict.setEachBody unmatched c) ++
+            takeEnd matchBottom c.bodies.sideA
         | otherwise -> NoResolution
     where
-        Sides {sideA, sideBase, sideB} = bodies
         match base a b
             | null base = lengthOfCommonPrefix a b
             | otherwise = minimum $ map (lengthOfCommonPrefix base) [a, b]
-        matchTop = match sideBase sideA sideB
+        matchTop = match c.bodies.sideBase c.bodies.sideA c.bodies.sideB
         revBottom = reverse . drop matchTop
-        matchBottom = match (revBottom sideBase) (revBottom sideA) (revBottom sideB)
+        matchBottom = match (revBottom c.bodies.sideBase) (revBottom c.bodies.sideA) (revBottom c.bodies.sideB)
         dropEnd count xs = take (length xs - count) xs
         takeEnd count xs = drop (length xs - count) xs
         unmatched xs = drop matchTop $ dropEnd matchBottom xs
@@ -112,8 +111,8 @@ allSame (x:y:rest) = x == y && allSame (y:rest)
 allSame _ = True
 
 lineBreakFix :: Conflict -> Conflict
-lineBreakFix c@Conflict{bodies}
-    | any null (toList bodies)
+lineBreakFix c
+    | any null (toList c.bodies)
     || allSame (toList endings) = c
     | otherwise =
         case resolveGen endings of
@@ -121,7 +120,7 @@ lineBreakFix c@Conflict{bodies}
         Just CRLF -> Conflict.setStrings makeCr c
         _ -> c
     where
-        endings = fmap lineEndings bodies
+        endings = fmap lineEndings c.bodies
         removeCr x@(_:_) | last x == '\r' = init x
         removeCr x = x
         makeCr x@(_:_) | last x == '\r' = x

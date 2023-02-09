@@ -1,4 +1,4 @@
-{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NoImplicitPrelude, OverloadedRecordDot #-}
 
 module Environment
     ( checkConflictStyle, shouldUseColorByTerminal, openEditor
@@ -41,7 +41,7 @@ checkConflictStyle :: Options -> IO ()
 checkConflictStyle opts =
     do  conflictStyle <- getConflictStyle
         unless (conflictStyle `elem` ["diff3", "zdiff3"]) $
-            do  unless (shouldSetConflictStyle opts) $
+            do  unless opts.shouldSetConflictStyle $
                     fail $ concat
                     [ "merge.conflictstyle must be diff3 but is "
                     , show conflictStyle
@@ -59,7 +59,7 @@ checkConflictStyle opts =
 
 openEditor :: Options -> FilePath -> IO ()
 openEditor opts path
-    | shouldUseEditor opts =
+    | opts.shouldUseEditor =
         do  editor <- getEnv "EDITOR"
             callProcess editor [path]
     | otherwise = pure ()
