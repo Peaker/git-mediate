@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, NoImplicitPrelude, DeriveTraversable, NamedFieldPuns, DerivingVia, DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts, NoImplicitPrelude, DeriveTraversable, NamedFieldPuns, DerivingVia, DeriveGeneric, OverloadedRecordDot #-}
 
 module Conflict
     ( Conflict(..), Sides(..), LineNo
@@ -31,7 +31,7 @@ data Conflict = Conflict
     } deriving (Show)
 
 setBodies :: (Sides [String] -> Sides [String]) -> Conflict -> Conflict
-setBodies f c@Conflict{bodies} = c{bodies = f bodies}
+setBodies f c = c{bodies = f c.bodies}
 
 setEachBody :: ([String] -> [String]) -> Conflict -> Conflict
 setEachBody = setBodies . fmap
@@ -40,8 +40,8 @@ setStrings :: (String -> String) -> Conflict -> Conflict
 setStrings = setEachBody . map
 
 prettyLines :: Conflict -> [String]
-prettyLines Conflict{markers, markerEnd, bodies} =
-    concat ((:) <$> (snd <$> markers) <*> bodies) <> [snd markerEnd]
+prettyLines c =
+    concat ((:) <$> (snd <$> c.markers) <*> c.bodies) <> [snd c.markerEnd]
 
 pretty :: Conflict -> String
 pretty = unlines . prettyLines
@@ -96,7 +96,7 @@ parseConflict markerA =
         (linesB   , markerEnd)  <- readUpToMarker '>' markerCount
         pure Conflict
             { markers    = Sides markerA markerBase markerB
-            , markerEnd  = markerEnd
+            , markerEnd
             , bodies     = fmap snd <$> Sides linesA linesBase linesB
             }
     where

@@ -1,4 +1,4 @@
-{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NoImplicitPrelude, OverloadedRecordDot #-}
 
 module Main (main) where
 
@@ -52,13 +52,13 @@ dumpDiffs :: ColorEnable -> Options -> FilePath -> Int -> (Int, Conflict) -> IO 
 dumpDiffs colorEnable opts filePath count (idx, conflict) =
     do
         putStrLn $ unwords ["### Conflict", show idx, "of", show count]
-        when (shouldDumpDiffs opts) $ traverse_ dumpDiff $ getConflictDiffs conflict
-        when (shouldDumpDiff2 opts) $ dumpDiff2 $ getConflictDiff2s conflict
+        when opts.shouldDumpDiffs $ traverse_ dumpDiff $ getConflictDiffs conflict
+        when opts.shouldDumpDiff2 $ dumpDiff2 $ getConflictDiff2s conflict
     where
         dumpDiff (side, (lineNo, marker), diff) =
             do  putStrLn $ concat
                     [filePath, ":", show lineNo, ":Diff", show side, ": ", marker]
-                putStr $ unlines $ map (ppDiff colorEnable) (trimDiff (diffsContext opts) diff)
+                putStr $ unlines $ map (ppDiff colorEnable) (trimDiff opts.diffsContext diff)
         dumpDiff2 ((lineNoA, markerA), (lineNoB, markerB), diff) =
             do  putStrLn $ concat [filePath, ":", show lineNoA, " <->", markerA]
                 putStrLn $ concat [filePath, ":", show lineNoB, ": ", markerB]
@@ -66,7 +66,7 @@ dumpDiffs colorEnable opts filePath count (idx, conflict) =
 
 dumpAndOpenEditor :: ColorEnable -> Options -> FilePath -> [Conflict] -> IO ()
 dumpAndOpenEditor colorEnable opts path conflicts =
-    do  when (shouldDumpDiffs opts || shouldDumpDiff2 opts) $
+    do  when (opts.shouldDumpDiffs || opts.shouldDumpDiff2) $
             traverse_ (dumpDiffs colorEnable opts path (length conflicts)) (zip [1..] conflicts)
         openEditor opts path
 
@@ -81,7 +81,7 @@ overwrite fileName content =
         bkup = fileName <.> "bk"
 
 handleFileResult :: ColorEnable -> Options -> FilePath -> NewContent -> IO ()
-handleFileResult colorEnable opts fileName (NewContent res content)
+handleFileResult colorEnable opts fileName res
     | successes == 0 && allGood =
       do  putStrLn $ fileName ++ ": No conflicts, git-adding"
           gitAdd fileName
@@ -93,7 +93,7 @@ handleFileResult colorEnable opts fileName (NewContent res content)
     | successes == 0 =
       do  putStrLn $ concat
               [ fileName, ": Reduced ", show reductions, " conflicts"]
-          overwrite fileName content
+          overwrite fileName res.newContent
           doDump
     | otherwise =
       do  putStrLn $ concat
@@ -101,29 +101,29 @@ handleFileResult colorEnable opts fileName (NewContent res content)
               , " conflicts (failed to resolve " ++ show (reductions + failures) ++ " conflicts)"
               , if allGood then ", git adding" else ""
               ]
-          overwrite fileName content
+          overwrite fileName res.newContent
           if allGood
               then gitAdd fileName
               else doDump
     where
-        allGood = Resolution.fullySuccessful res
+        allGood = Resolution.fullySuccessful res.result
         doDump =
             dumpAndOpenEditor colorEnable opts fileName
-            (rights (Conflict.parse content))
+            (rights (Conflict.parse res.newContent))
         Result
             { resolvedSuccessfully = successes
             , reducedConflicts = reductions
             , failedToResolve = failures
-            } = res
+            } = res.result
 
 resolve :: ColorEnable -> Options -> FilePath -> IO Result
 resolve colorEnable opts fileName =
     do
         resolutions <-
-            Resolution.resolveContent (Untabify (Opts.untabify opts))
+            Resolution.resolveContent (Untabify opts.untabify)
             . Conflict.parse
             <$> readFile fileName
-        result resolutions <$ handleFileResult colorEnable opts fileName resolutions
+        resolutions.result <$ handleFileResult colorEnable opts fileName resolutions
 
 relativePath :: FilePath -> FilePath -> FilePath
 relativePath base path
@@ -263,9 +263,9 @@ exitProcess = exitWith . exitCodeOf
 main :: IO ()
 main =
   do  opts <- Opts.getOpts
-      colorEnable <- maybe shouldUseColorByTerminal pure (shouldUseColor opts)
+      colorEnable <- maybe shouldUseColorByTerminal pure opts.shouldUseColor
       checkConflictStyle opts
-      case mergeSpecificFile opts of
+      case opts.mergeSpecificFile of
           Nothing -> mediateAll colorEnable opts
           Just path -> resolve colorEnable opts path
           >>= exitProcess

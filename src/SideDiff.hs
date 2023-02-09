@@ -1,4 +1,4 @@
-{-# LANGUAGE NoImplicitPrelude, NamedFieldPuns #-}
+{-# LANGUAGE NoImplicitPrelude, OverloadedRecordDot #-}
 
 module SideDiff
     ( SideDiff, Side(..)
@@ -16,18 +16,12 @@ data Side = A | B
 type SideDiff = (Side, (LineNo, String), [Diff String])
 
 getConflictDiffs :: Conflict -> [SideDiff]
-getConflictDiffs Conflict{markers, markerEnd, bodies} =
-    [ (A, markerA, getDiff bodyBase bodyA)
-    | not (null bodyA) ] ++
-    [ (B, (fst markerB, snd markerEnd), getDiff bodyBase bodyB)
-    | not (null bodyB) ]
-    where
-        Sides markerA _ markerB = markers
-        Sides bodyA bodyBase bodyB = bodies
+getConflictDiffs c =
+    [ (A, c.markers.sideA, getDiff c.bodies.sideBase c.bodies.sideA)
+    | not (null c.bodies.sideA) ] ++
+    [ (B, (fst c.markers.sideB, snd c.markerEnd), getDiff c.bodies.sideBase c.bodies.sideB)
+    | not (null c.bodies.sideB) ]
 
 getConflictDiff2s :: Conflict -> ((LineNo, String), (LineNo, String), [Diff String])
-getConflictDiff2s Conflict{markers, bodies} =
-    (markerA, markerB, getDiff bodyA bodyB)
-    where
-        Sides markerA _ markerB = markers
-        Sides bodyA _ bodyB = bodies
+getConflictDiff2s c =
+    (c.markers.sideA, c.markers.sideB, getDiff c.bodies.sideA c.bodies.sideB)
