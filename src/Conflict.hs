@@ -25,13 +25,13 @@ data Sides a = Sides
     deriving Applicative via Generically1 Sides
 
 data Conflict = Conflict
-    { cMarkers   :: Sides (LineNo, String) -- The markers at the beginning of sections
-    , cMarkerEnd :: (LineNo, String)       -- The ">>>>>>>...." marker at the end of the conflict
-    , cBodies    :: Sides [String]
+    { markers   :: Sides (LineNo, String) -- The markers at the beginning of sections
+    , markerEnd :: (LineNo, String)       -- The ">>>>>>>...." marker at the end of the conflict
+    , bodies    :: Sides [String]
     } deriving (Show)
 
 setBodies :: (Sides [String] -> Sides [String]) -> Conflict -> Conflict
-setBodies f c@Conflict{cBodies} = c{cBodies = f cBodies}
+setBodies f c@Conflict{bodies} = c{bodies = f bodies}
 
 setEachBody :: ([String] -> [String]) -> Conflict -> Conflict
 setEachBody = setBodies . fmap
@@ -40,8 +40,8 @@ setStrings :: (String -> String) -> Conflict -> Conflict
 setStrings = setEachBody . map
 
 prettyLines :: Conflict -> [String]
-prettyLines Conflict{cMarkers, cMarkerEnd, cBodies} =
-    concat ((:) <$> (snd <$> cMarkers) <*> cBodies) <> [snd cMarkerEnd]
+prettyLines Conflict{markers, markerEnd, bodies} =
+    concat ((:) <$> (snd <$> markers) <*> bodies) <> [snd markerEnd]
 
 pretty :: Conflict -> String
 pretty = unlines . prettyLines
@@ -95,9 +95,9 @@ parseConflict markerA =
         (linesBase, markerB)    <- readUpToMarker '=' markerCount
         (linesB   , markerEnd)  <- readUpToMarker '>' markerCount
         pure Conflict
-            { cMarkers    = Sides markerA markerBase markerB
-            , cMarkerEnd  = markerEnd
-            , cBodies     = fmap snd <$> Sides linesA linesBase linesB
+            { markers    = Sides markerA markerBase markerB
+            , markerEnd  = markerEnd
+            , bodies     = fmap snd <$> Sides linesA linesBase linesB
             }
     where
         markerCount = Just (length (takeWhile (== '<') (snd markerA)))
