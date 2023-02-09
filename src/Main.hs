@@ -71,17 +71,17 @@ dumpAndOpenEditor colorEnable opts path conflicts =
         openEditor opts path
 
 overwrite :: FilePath -> String -> IO ()
-overwrite fileName newContent =
+overwrite fileName content =
     do  oldPermissions <- getPermissions fileName
         renameFile fileName bkup
-        writeFile fileName newContent
+        writeFile fileName content
         setPermissions fileName oldPermissions
         removeFile bkup
     where
         bkup = fileName <.> "bk"
 
 handleFileResult :: ColorEnable -> Options -> FilePath -> NewContent -> IO ()
-handleFileResult colorEnable opts fileName (NewContent result newContent)
+handleFileResult colorEnable opts fileName (NewContent res content)
     | successes == 0 && allGood =
       do  putStrLn $ fileName ++ ": No conflicts, git-adding"
           gitAdd fileName
@@ -93,7 +93,7 @@ handleFileResult colorEnable opts fileName (NewContent result newContent)
     | successes == 0 =
       do  putStrLn $ concat
               [ fileName, ": Reduced ", show reductions, " conflicts"]
-          overwrite fileName newContent
+          overwrite fileName content
           doDump
     | otherwise =
       do  putStrLn $ concat
@@ -101,20 +101,20 @@ handleFileResult colorEnable opts fileName (NewContent result newContent)
               , " conflicts (failed to resolve " ++ show (reductions + failures) ++ " conflicts)"
               , if allGood then ", git adding" else ""
               ]
-          overwrite fileName newContent
+          overwrite fileName content
           if allGood
               then gitAdd fileName
               else doDump
     where
-        allGood = Resolution.fullySuccessful result
+        allGood = Resolution.fullySuccessful res
         doDump =
             dumpAndOpenEditor colorEnable opts fileName
-            (rights (Conflict.parse newContent))
+            (rights (Conflict.parse content))
         Result
-            { _resolvedSuccessfully = successes
-            , _reducedConflicts = reductions
-            , _failedToResolve = failures
-            } = result
+            { resolvedSuccessfully = successes
+            , reducedConflicts = reductions
+            , failedToResolve = failures
+            } = res
 
 resolve :: ColorEnable -> Options -> FilePath -> IO Result
 resolve colorEnable opts fileName =
@@ -123,7 +123,7 @@ resolve colorEnable opts fileName =
             Resolution.resolveContent (Untabify (Opts.untabify opts))
             . Conflict.parse
             <$> readFile fileName
-        _result resolutions <$ handleFileResult colorEnable opts fileName resolutions
+        result resolutions <$ handleFileResult colorEnable opts fileName resolutions
 
 relativePath :: FilePath -> FilePath -> FilePath
 relativePath base path
@@ -244,17 +244,17 @@ mediateAll colorEnable opts =
 
       traverse_ deleteModifyConflictHandle deleteModifyConflicts
 
-      result <- filesMatchingPrefixes ["UU ", "AA ", "DA ", "AD ", "DU ", "UD "]
+      res <- filesMatchingPrefixes ["UU ", "AA ", "DA ", "AD ", "DU ", "UD "]
           >>= foldMap (resolve colorEnable opts)
 
       -- Heuristically delete files that were remove/modify conflict
       -- and ended up with empty content
       traverse_ removeFileIfEmpty deleteModifyConflicts
-      pure result
+      pure res
 
 exitCodeOf :: Result -> ExitCode
-exitCodeOf result
-    | Resolution.fullySuccessful result = ExitSuccess
+exitCodeOf res
+    | Resolution.fullySuccessful res = ExitSuccess
     | otherwise = ExitFailure 111
 
 exitProcess :: Result -> IO ()

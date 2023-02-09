@@ -28,8 +28,8 @@ resolveGen (Sides a base b)
     | otherwise = Nothing
 
 resolveConflict :: Conflict -> Resolution
-resolveConflict conflict@Conflict {cBodies} =
-    case resolveGen cBodies of
+resolveConflict conflict@Conflict {bodies} =
+    case resolveGen bodies of
     Just r -> Resolution $ unlines r
     Nothing
         | matchTop > 0 || matchBottom > 0 ->
@@ -39,7 +39,7 @@ resolveConflict conflict@Conflict {cBodies} =
             takeEnd matchBottom sideA
         | otherwise -> NoResolution
     where
-        Sides {sideA, sideBase, sideB} = cBodies
+        Sides {sideA, sideBase, sideB} = bodies
         match base a b
             | null base = lengthOfCommonPrefix a b
             | otherwise = minimum $ map (lengthOfCommonPrefix base) [a, b]
@@ -54,9 +54,9 @@ lengthOfCommonPrefix :: Eq a => [a] -> [a] -> Int
 lengthOfCommonPrefix x y = length $ takeWhile id $ zipWith (==) x y
 
 data Result = Result
-    { _resolvedSuccessfully :: !Int
-    , _reducedConflicts :: !Int
-    , _failedToResolve :: !Int
+    { resolvedSuccessfully :: !Int
+    , reducedConflicts :: !Int
+    , failedToResolve :: !Int
     }
 
 fullySuccessful :: Result -> Bool
@@ -68,8 +68,8 @@ instance Semigroup Result where
 instance Monoid Result where mempty = Result 0 0 0
 
 data NewContent = NewContent
-    { _result :: !Result
-    , _newContent :: !String
+    { result :: !Result
+    , newContent :: !String
     }
     deriving Generic
     deriving (Semigroup, Monoid) via Generically NewContent
@@ -112,8 +112,8 @@ allSame (x:y:rest) = x == y && allSame (y:rest)
 allSame _ = True
 
 lineBreakFix :: Conflict -> Conflict
-lineBreakFix c@Conflict{cBodies}
-    | any null (toList cBodies)
+lineBreakFix c@Conflict{bodies}
+    | any null (toList bodies)
     || allSame (toList endings) = c
     | otherwise =
         case resolveGen endings of
@@ -121,7 +121,7 @@ lineBreakFix c@Conflict{cBodies}
         Just CRLF -> Conflict.setStrings makeCr c
         _ -> c
     where
-        endings = fmap lineEndings cBodies
+        endings = fmap lineEndings bodies
         removeCr x@(_:_) | last x == '\r' = init x
         removeCr x = x
         makeCr x@(_:_) | last x == '\r' = x
