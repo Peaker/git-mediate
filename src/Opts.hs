@@ -74,7 +74,7 @@ opts =
     O.fullDesc
     <> O.progDesc
        "Resolve any git conflicts that have become trivial by editing operations.\n\
-       \Go to http://github.com/Peaker/git-mediate for example use."
+       \Go to https://github.com/Peaker/git-mediate for example use."
     <> O.header "git-mediate - Become a conflicts hero"
 
 getOpts :: IO Options

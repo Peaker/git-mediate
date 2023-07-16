@@ -77,7 +77,7 @@ file for you.
 
 ## Recommended: Using haskell-stack
 
-1. Install [haskell stack](http://docs.haskellstack.org/en/stable/README/)
+1. Install [haskell stack](https://docs.haskellstack.org/en/stable/)
 2. Run: `stack install git-mediate`
 
 ## Alternative install: from sources
@@ -87,7 +87,7 @@ Clone it:
     git clone https://github.com/Peaker/git-mediate
     cd git-mediate
 
-Option #1: Build & install using stack: `stack install` (make sure you installed [haskell stack](http://docs.haskellstack.org/en/stable/README/))
+Option #1: Build & install using stack: `stack install` (make sure you installed [haskell stack](https://docs.haskellstack.org/en/stable/))
 
 Option #2: Build & install using cabal: `cabal install` (make sure `~/.cabal/bin` is in your `$PATH`)
 
