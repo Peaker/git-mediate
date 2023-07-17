@@ -106,3 +106,19 @@ You can use the `-e` flag to invoke your `$EDITOR` on every conflicted file that
 Sometimes, the conflict is just a giant block of incomprehensible text next to another giant block of incomprehensible text.
 
 You can use the `-d` flag to show the conflict in diff-from-base form. Then, you can manually apply the changes you see in both the base and wherever needed, and use git-mediate again to make sure you've updated everything appropriately.
+
+## License
+
+Copyright (C) 2014-2023  Eyal Lotem
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; version 2 of the License only.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
