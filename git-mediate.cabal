@@ -52,6 +52,7 @@ category:            Development
 build-type:          Simple
 extra-source-files:  stack.yaml
                      ChangeLog.md
+                     README.md
 cabal-version:       >=1.10
 
 source-repository head
