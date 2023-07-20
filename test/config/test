@@ -6,23 +6,23 @@ cd ${DIR}
 git init
 
 git config --global --unset merge.conflictstyle
-(../${git_mediate} && exit 11) || echo Conflict style unset errorized correctly
+(git-mediate && exit 11) || echo Conflict style unset errorized correctly
 
 git config --global merge.conflictstyle diff2
-(../${git_mediate} && exit 12) || echo Conflict style diff2 errorized correctly
+(git-mediate && exit 12) || echo Conflict style diff2 errorized correctly
 
 git config --global merge.conflictstyle diff3
-../${git_mediate}
+git-mediate
 
 echo diff3 accepted correctly
 
 git config merge.conflictstyle diff2
-(../${git_mediate} && exit 12) || echo Per-project conflict style diff2 errorized correctly
+(git-mediate && exit 12) || echo Per-project conflict style diff2 errorized correctly
 
-(../${git_mediate} -s && exit 12) || echo Per-project conflict style diff2 failure to override errorized correctly
+(git-mediate -s && exit 12) || echo Per-project conflict style diff2 failure to override errorized correctly
 git config --unset merge.conflictstyle
 git config --global merge.conflictstyle diff2
-../${git_mediate} -s
+git-mediate -s
 style=$(git config merge.conflictstyle)
 if [ "$style" == "diff3" ]; then
   echo "Conflict style set correctly"

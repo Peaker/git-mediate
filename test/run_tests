@@ -1,8 +1,9 @@
 set -eux
 
 DIR="$( dirname "$0" )"
+SRC="$( dirname "${DIR}" )"
 
-export git_mediate=../dist/build/git-mediate/git-mediate
+export PATH="${SRC}/dist/build/git-mediate:$PATH"
 
 echo Spaces test
 ${DIR}/spaces/test
