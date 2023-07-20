@@ -19,7 +19,8 @@ git stash >/dev/null
 echo 'Hello   Booya' > file
 git add file
 git config --global merge.conflictstyle diff3
-(git stash pop >/dev/null && exit 1) || echo "Conflict set up successfully"
+(git stash pop >/dev/null && exit 1) ||
+echo "Conflict set up successfully"
 # Set up of conflict over
 
 git-mediate --untabify=4
