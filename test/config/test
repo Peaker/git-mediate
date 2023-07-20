@@ -7,6 +7,8 @@ cd "${DIR}"
 
 export HOME="$(pwd)"
 
+pwd
+
 cleanup () {
   rm -rf .git .gitconfig
 }
