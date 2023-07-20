@@ -3,8 +3,11 @@ set -eux
 DIR="$( dirname "$0" )"
 cd "${DIR}"
 
+export HOME="$(pwd)"
+
 git init
 
+git config --global merge.conflictstyle diff3
 git config --global --unset merge.conflictstyle
 (git-mediate && exit 11) || echo Conflict style unset errorized correctly
 
