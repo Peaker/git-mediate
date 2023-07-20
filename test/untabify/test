@@ -19,6 +19,6 @@ git add file
 (git stash pop >/dev/null && exit 1) || echo "Conflict set up successfully"
 # Set up of conflict over
 
-../${git_mediate} --untabify=4
+git-mediate --untabify=4
 
 rm -rf .git file
