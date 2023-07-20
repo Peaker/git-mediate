@@ -1,7 +1,7 @@
 set -eux
 
 DIR="$( dirname "$0" )"
-cd ${DIR}
+cd "${DIR}"
 
 pwd
 rm -rf .git

@@ -6,13 +6,13 @@ SRC="$( dirname "${DIR}" )"
 export PATH="${SRC}/dist/build/git-mediate:$PATH"
 
 echo Spaces test
-${DIR}/spaces/test
+"${DIR}"/spaces/test
 
 echo Untabify test
-${DIR}/untabify/test
+"${DIR}"/untabify/test
 
 echo Config test
-${DIR}/config/test
+"${DIR}"/config/test
 
 
 echo Tests successful
