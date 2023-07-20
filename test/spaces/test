@@ -3,6 +3,8 @@ set -eux
 DIR="$( dirname "$0" )"
 cd "${DIR}"
 
+export HOME="$(pwd)"
+
 pwd
 rm -rf .git
 
@@ -16,6 +18,7 @@ echo changeA >> 'a b'
 git stash >/dev/null
 echo changeB >> 'a b'
 git add 'a b'
+git config --global merge.conflictstyle diff3
 (git stash pop >/dev/null && exit 1) || echo "Conflict set up successfully"
 # Set up of conflict over
 
