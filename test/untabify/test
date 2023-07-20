@@ -31,3 +31,5 @@ echo 'Conflict set up successfully'
 # Set up of conflict over
 
 git-mediate --untabify=4
+
+echo Success

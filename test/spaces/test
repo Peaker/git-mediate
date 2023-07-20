@@ -32,3 +32,5 @@ echo 'Conflict set up successfully'
 
 git-mediate >/dev/null &&
 (echo 'should fail to resolve conflicts' ; exit 1)
+
+echo Success

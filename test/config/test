@@ -47,3 +47,5 @@ else
   echo 'The -s option did not set conflict style'
   exit 1
 fi
+
+echo Success
