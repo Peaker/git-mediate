@@ -28,7 +28,7 @@ style=$(git config merge.conflictstyle)
 if [ "$style" == "diff3" ]; then
   echo "Conflict style set correctly"
 else
-  echo '-s' did not set conflict style
+  echo The '-s' option did not set conflict style
   exit 1
 fi
 

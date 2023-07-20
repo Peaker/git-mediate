@@ -9,7 +9,7 @@ rm -rf .git
 git init >/dev/null
 git config user.email test@test.com
 git config user.name Test
-echo -e 'Hello\tBooya' > file
+printf 'Hello\tBooya\n' > file
 git add -- file
 git commit -m"tabs" >/dev/null
 echo 'Extra line' >> file
