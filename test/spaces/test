@@ -15,17 +15,17 @@ git config user.email test@test.com
 git config user.name Test
 echo hi > 'a b'
 git add -- 'a b'
-git commit -m"a b file added" >/dev/null
+git commit -m'a b file added' >/dev/null
 echo changeA >> 'a b'
 git stash >/dev/null
 echo changeB >> 'a b'
 git add 'a b'
 git config --global merge.conflictstyle diff3
 (git stash pop >/dev/null && exit 1) ||
-echo "Conflict set up successfully"
+echo 'Conflict set up successfully'
 # Set up of conflict over
 
 git-mediate >/dev/null &&
-(echo should fail to resolve conflicts ; exit 1)
+(echo 'should fail to resolve conflicts' ; exit 1)
 
 rm -rf .git 'a b'
