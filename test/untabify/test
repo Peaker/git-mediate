@@ -8,7 +8,12 @@ cd "${DIR}"
 export HOME="$(pwd)"
 
 pwd
-rm -rf .git
+
+cleanup () {
+  rm -rf .git .gitconfig file
+}
+trap cleanup EXIT
+cleanup
 
 git init >/dev/null
 git config user.email test@test.com
@@ -26,5 +31,3 @@ echo 'Conflict set up successfully'
 # Set up of conflict over
 
 git-mediate --untabify=4
-
-rm -rf .git file

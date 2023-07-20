@@ -7,6 +7,12 @@ cd "${DIR}"
 
 export HOME="$(pwd)"
 
+cleanup () {
+  rm -rf .git .gitconfig
+}
+trap cleanup EXIT
+cleanup
+
 git init
 
 git config --global merge.conflictstyle diff3
@@ -39,5 +45,3 @@ else
   echo 'The -s option did not set conflict style'
   exit 1
 fi
-
-rm -rf .git

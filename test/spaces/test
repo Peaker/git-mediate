@@ -8,7 +8,12 @@ cd "${DIR}"
 export HOME="$(pwd)"
 
 pwd
-rm -rf .git
+
+cleanup () {
+  rm -rf .git .gitconfig 'a b'
+}
+trap cleanup EXIT
+cleanup
 
 git init >/dev/null
 git config user.email test@test.com
@@ -27,5 +32,3 @@ echo 'Conflict set up successfully'
 
 git-mediate >/dev/null &&
 (echo 'should fail to resolve conflicts' ; exit 1)
-
-rm -rf .git 'a b'
