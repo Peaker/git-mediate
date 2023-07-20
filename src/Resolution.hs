@@ -127,10 +127,10 @@ lineBreakFix c
         makeCr x = x <> "\r"
 
 resolveContent :: Untabify -> [Either String Conflict] -> NewContent
-resolveContent (Untabify mUntabifySize) =
+resolveContent (Untabify mTabSize) =
     foldMap go
     where
-        untabified = maybe id untabify mUntabifySize
+        untabified = maybe id untabify mTabSize
         go (Left line) = NewContent mempty (unlines [line])
         go (Right conflict) =
             case (resolveConflict . lineBreakFix . untabified) conflict of
