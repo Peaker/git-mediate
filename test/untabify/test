@@ -15,14 +15,14 @@ git config user.email test@test.com
 git config user.name Test
 printf 'Hello\tBooya\n' > file
 git add -- file
-git commit -m"tabs" >/dev/null
+git commit -m'tabs' >/dev/null
 echo 'Extra line' >> file
 git stash >/dev/null
 echo 'Hello   Booya' > file
 git add file
 git config --global merge.conflictstyle diff3
 (git stash pop >/dev/null && exit 1) ||
-echo "Conflict set up successfully"
+echo 'Conflict set up successfully'
 # Set up of conflict over
 
 git-mediate --untabify=4
