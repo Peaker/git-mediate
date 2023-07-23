@@ -57,9 +57,13 @@ checkConflictStyle opts =
                     , "specified in your per-project .git/config?"
                     ]
 
-openEditor :: Options -> FilePath -> IO ()
-openEditor opts path
+openEditor :: Options -> FilePath -> Int -> IO ()
+openEditor opts path lineNo
     | opts.shouldUseEditor =
         do  editor <- getEnv "EDITOR"
-            callProcess editor [path]
+            let cmdOpts =
+                    case editor of
+                    "code" -> ["--goto", path <> ":" <> show lineNo]
+                    _ -> ["+" <> show lineNo, path]
+            callProcess editor cmdOpts
     | otherwise = pure ()

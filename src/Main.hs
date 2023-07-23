@@ -68,7 +68,7 @@ dumpAndOpenEditor :: ColorEnable -> Options -> FilePath -> [Conflict] -> IO ()
 dumpAndOpenEditor colorEnable opts path conflicts =
     do  when (opts.shouldDumpDiffs || opts.shouldDumpDiff2) $
             traverse_ (dumpDiffs colorEnable opts path (length conflicts)) (zip [1..] conflicts)
-        openEditor opts path
+        openEditor opts path ((Conflict.lineNo . Conflict.sideA . markers . head) conflicts)
 
 overwrite :: FilePath -> String -> IO ()
 overwrite fileName content =
