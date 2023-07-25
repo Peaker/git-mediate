@@ -1,4 +1,4 @@
-## 1.0.9 / To be released
+## 1.0.9 / 2023.07.25
 
 * Do not warn when git is set to use `zdiff3` conflict style
 * Resolve line ending conventions changes (i.e changes from Unix/Windows line endings)
