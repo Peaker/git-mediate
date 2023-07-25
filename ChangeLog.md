@@ -1,4 +1,4 @@
-## Changes since last release
+## 1.0.9 / To be released
 
 * Do not warn when git is set to use `zdiff3` conflict style
 * Resolve line ending conventions changes (i.e changes from Unix/Windows line endings)
@@ -6,6 +6,7 @@
 * Handle changes in `git status` formatting for files in spaces in their names
 * `--context` option for `-d` mode to control size of context shown around diff
 * Fixed parsing of conflicts with nested recursive conflicts
+* `--editor` goes to the location of the first conflict in the file
 
 ## 1.0.8.1 / 2020.10.13
 
