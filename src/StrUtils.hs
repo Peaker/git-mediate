@@ -1,10 +1,10 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module StrUtils
-    ( stripNewline, ensureNewline, unprefix
+    ( stripNewline, ensureNewline
     ) where
 
-import           Data.List (isPrefixOf, isSuffixOf)
+import           Data.List (isSuffixOf)
 
 import           Prelude.Compat
 
@@ -20,8 +20,3 @@ ensureNewline str = str ++ suffix
         suffix
             | "\n" `isSuffixOf` str = ""
             | otherwise = "\n"
-
-unprefix :: Eq a => [a] -> [a] -> Maybe [a]
-unprefix prefix str
-    | prefix `isPrefixOf` str = Just (drop (length prefix) str)
-    | otherwise = Nothing

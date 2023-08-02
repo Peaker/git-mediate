@@ -18,7 +18,7 @@ import           PPDiff (ppDiff, ColorEnable(..))
 import           Resolution (Result(..), NewContent(..), Untabify(..))
 import qualified Resolution
 import           SideDiff (SideDiff(..), getConflictDiffs, getConflictDiff2s)
-import           StrUtils (ensureNewline, stripNewline, unprefix)
+import           StrUtils (ensureNewline, stripNewline)
 import           System.Directory (renameFile, removeFile, getCurrentDirectory, getPermissions, setPermissions)
 import           System.Exit (ExitCode(..), exitWith)
 import           System.FilePath ((<.>), makeRelative, joinPath, splitPath)
@@ -195,16 +195,32 @@ removeFileIfEmpty path =
             do  removeFile path
                 callProcess "git" ["add", "-u", "--", path]
 
-getStatusPorcelain :: IO String
+type StatusCode = (Char, Char)
+
+data StatusLine = StatusLine
+    { statusCode :: StatusCode
+    , statusArgs :: String
+    }
+
+parseStatusPorcelainLine :: String -> Either String StatusLine
+parseStatusPorcelainLine (x:y:' ':rest) = Right (StatusLine (x, y) rest)
+parseStatusPorcelainLine line = Left ("Cannot parse status line: " <> show line)
+
+getStatusPorcelain :: IO [StatusLine]
 getStatusPorcelain =
-    do  (statusCode, statusPorcelain, statusStderr) <-
+    do  (resCode, statusPorcelain, statusStderr) <-
             readProcessWithExitCode "git" ["status", "--porcelain"] ""
-        when (statusCode /= ExitSuccess) $ do
+        when (resCode /= ExitSuccess) $ do
             -- Print git's error message. Usually -
             -- "fatal: Not a git repository (or any of the parent directories): .git"
             hPutStr stderr statusStderr
-            exitWith statusCode
-        pure statusPorcelain
+            exitWith resCode
+        case traverse parseStatusPorcelainLine . lines $ statusPorcelain of
+            Right res -> pure res
+            Left err ->
+                do
+                    hPutStr stderr err
+                    exitWith (ExitFailure 1)
 
 getGitRootDir :: IO FilePath
 getGitRootDir =
@@ -212,7 +228,12 @@ getGitRootDir =
       relativePath cwd . stripNewline <$>
           readProcess "git" ["rev-parse", "--show-toplevel"] ""
 
-makeFilesMatchingPrefixes :: IO ([String] -> IO [FilePath])
+matchStatus :: StatusCode -> StatusLine -> Maybe String
+matchStatus code line
+    | statusCode line == code = Just (statusArgs line)
+    | otherwise = Nothing
+
+makeFilesMatchingPrefixes :: IO ([StatusCode] -> IO [FilePath])
 makeFilesMatchingPrefixes =
   do  statusPorcelain <- getStatusPorcelain
       rootDir <- getGitRootDir
@@ -222,14 +243,19 @@ makeFilesMatchingPrefixes =
               case reads x of
               [(r, "")] -> r
               _ -> x
-      let firstMatchingPrefix :: [String] -> String -> Maybe String
-          firstMatchingPrefix prefixes =
-              fmap decode . asum . traverse unprefix prefixes
-      let filesMatchingPrefixes :: [String] -> IO [FilePath]
-          filesMatchingPrefixes prefixes =
-              rootRelativeFiles . mapMaybe (firstMatchingPrefix prefixes)
-              $ lines statusPorcelain
-      pure filesMatchingPrefixes
+      let firstMatchingStatus :: [StatusCode] -> StatusLine -> Maybe String
+          firstMatchingStatus statuses =
+              fmap decode . asum . traverse matchStatus statuses
+      let filesMatchingStatuses :: [StatusCode] -> IO [FilePath]
+          filesMatchingStatuses statuses =
+              rootRelativeFiles . mapMaybe (firstMatchingStatus statuses)
+              $ statusPorcelain
+      pure filesMatchingStatuses
+
+statusCodes :: Char -> Char -> [StatusCode]
+statusCodes x y
+    | x == y = [(x, y)]
+    | otherwise = [(x, y), (y, x)]
 
 mediateAll :: ColorEnable -> Options -> IO Result
 mediateAll colorEnable opts =
@@ -240,11 +266,13 @@ mediateAll colorEnable opts =
 -- have their type (i.e. regular file, symlink, submodule, ...) changed (T),
 -- are Unmerged (U), are Unknown (X), or have had their pairing Broken (B)
 
-      deleteModifyConflicts <- filesMatchingPrefixes ["DU ", "UD "]
+      deleteModifyConflicts <- filesMatchingPrefixes (statusCodes 'D' 'U')
 
       traverse_ deleteModifyConflictHandle deleteModifyConflicts
 
-      res <- filesMatchingPrefixes ["UU ", "AA ", "DA ", "AD ", "DU ", "UD "]
+      res <-
+          filesMatchingPrefixes
+          ([('U', 'U'), ('A', 'A'), ('D', 'A'), ('D', 'U')] >>= uncurry statusCodes)
           >>= foldMap (resolve colorEnable opts)
 
       -- Heuristically delete files that were remove/modify conflict
