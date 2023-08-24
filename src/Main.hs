@@ -10,6 +10,7 @@ import           Data.Algorithm.Diff (Diff, PolyDiff(..))
 import           Data.Either (rights)
 import           Data.Foldable (asum, traverse_)
 import           Data.List (isPrefixOf)
+import           Data.List.Split (splitOn)
 import           Data.Maybe (mapMaybe)
 import           Environment (checkConflictStyle, openEditor, shouldUseColorByTerminal)
 import qualified Opts
@@ -202,20 +203,25 @@ data StatusLine = StatusLine
     , statusArgs :: String
     }
 
-parseStatusPorcelainLine :: String -> Either String StatusLine
-parseStatusPorcelainLine (x:y:' ':rest) = Right (StatusLine (x, y) rest)
-parseStatusPorcelainLine line = Left ("Cannot parse status line: " <> show line)
+parseStatusZ :: [String] -> Either String [StatusLine]
+parseStatusZ [""] = Right []
+parseStatusZ (('R':' ':dst):_src:rest) =
+    -- We don't currently do anything with rename statuses so _src is ignored
+    (StatusLine ('R', ' ') dst :) <$> parseStatusZ rest
+-- TODO: Which other statuses have two fields?
+parseStatusZ ((x:y:' ':arg):rest) = (StatusLine (x, y) arg :) <$> parseStatusZ rest
+parseStatusZ part = Left ("Cannot parse status -z part: " <> show part)
 
 getStatusPorcelain :: IO [StatusLine]
 getStatusPorcelain =
-    do  (resCode, statusPorcelain, statusStderr) <-
-            readProcessWithExitCode "git" ["status", "--porcelain"] ""
+    do  (resCode, statusZ, statusStderr) <-
+            readProcessWithExitCode "git" ["status", "-z"] ""
         when (resCode /= ExitSuccess) $ do
             -- Print git's error message. Usually -
             -- "fatal: Not a git repository (or any of the parent directories): .git"
             hPutStr stderr statusStderr
             exitWith resCode
-        case traverse parseStatusPorcelainLine . lines $ statusPorcelain of
+        case parseStatusZ $ splitOn "\0" statusZ of
             Right res -> pure res
             Left err ->
                 do
