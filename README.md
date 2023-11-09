@@ -75,12 +75,17 @@ file for you.
 
 # Installation
 
-## Recommended: Using haskell-stack
+## Using package managers
+
+* macOS: `brew install git-mediate`
+* Linux (debian): `apt-get install git-mediate`
+
+## Using haskell-stack
 
 1. Install [haskell stack](https://docs.haskellstack.org/en/stable/)
 2. Run: `stack install git-mediate`
 
-## Alternative install: from sources
+## From sources
 
 Clone it:
 
