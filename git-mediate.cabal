@@ -72,7 +72,7 @@ executable git-mediate
                      , Paths_git_mediate
   ghc-options:         -O2 -Wall
   -- other-extensions:
-  build-depends:       base >=4.8 && <5
+  build-depends:       base >=4.16 && <5
                      , base-compat >= 0.8.2
                      , mtl >=2.1
                      , directory >=1.2
