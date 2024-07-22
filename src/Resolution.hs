@@ -27,17 +27,14 @@ resolveGen (Sides a base b)
     | a == b = Just a
     | otherwise = Nothing
 
-resolveConflict :: Conflict -> Resolution
-resolveConflict c =
-    case resolveGen c.bodies of
-    Just r -> Resolution $ unlines r
-    Nothing
-        | matchTop > 0 || matchBottom > 0 ->
-            PartialResolution $ unlines $
-            take matchTop c.bodies.sideA ++
-            Conflict.prettyLines (Conflict.setEachBody unmatched c) ++
-            takeEnd matchBottom c.bodies.sideA
-        | otherwise -> NoResolution
+reduceConflict :: Conflict -> Maybe String
+reduceConflict c
+    | matchTop > 0 || matchBottom > 0 =
+        Just $ unlines $
+        take matchTop c.bodies.sideA ++
+        Conflict.prettyLines (Conflict.setEachBody unmatched c) ++
+        takeEnd matchBottom c.bodies.sideA
+    | otherwise = Nothing
     where
         match base a b
             | null base = lengthOfCommonPrefix a b
@@ -48,6 +45,16 @@ resolveConflict c =
         dropEnd count xs = take (length xs - count) xs
         takeEnd count xs = drop (length xs - count) xs
         unmatched xs = drop matchTop $ dropEnd matchBottom xs
+
+-- | Like 'maybe', but with the arguments flipped.
+maybe' :: (a -> b) -> Maybe a -> b -> b
+maybe' f x def = maybe def f x
+
+resolveConflict :: Conflict -> Resolution
+resolveConflict c =
+    maybe' (Resolution . unlines) (resolveGen c.bodies) $
+    maybe' PartialResolution (reduceConflict c)
+    NoResolution
 
 lengthOfCommonPrefix :: Eq a => [a] -> [a] -> Int
 lengthOfCommonPrefix x y = length $ takeWhile id $ zipWith (==) x y
