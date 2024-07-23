@@ -16,7 +16,7 @@ import           Generic.Data (Generic, Generically(..))
 import           Prelude.Compat
 
 data Resolution
-    = NoResolution
+    = NoResolution Conflict
     | Resolution String
     | PartialResolution String
 
@@ -53,8 +53,8 @@ maybe' f x def = maybe def f x
 resolveConflict :: Conflict -> Resolution
 resolveConflict c =
     maybe' (Resolution . unlines) (resolveGen c.bodies) $
-    maybe' PartialResolution (reduceConflict c)
-    NoResolution
+    maybe' PartialResolution (reduceConflict c) $
+    NoResolution c
 
 lengthOfCommonPrefix :: Eq a => [a] -> [a] -> Int
 lengthOfCommonPrefix x y = length $ takeWhile id $ zipWith (==) x y
@@ -133,16 +133,15 @@ lineBreakFix c
         makeCr x@(_:_) | last x == '\r' = x
         makeCr x = x <> "\r"
 
+formatResolution :: Resolution -> NewContent
+formatResolution (NoResolution c) = NewContent (Result 0 0 1) (Conflict.pretty c)
+formatResolution (Resolution trivialLines) = NewContent (Result 1 0 0) trivialLines
+formatResolution (PartialResolution newLines) = NewContent (Result 0 1 0) newLines
+
 resolveContent :: Untabify -> [Either String Conflict] -> NewContent
 resolveContent (Untabify mTabSize) =
     foldMap go
     where
         untabified = maybe id untabify mTabSize
         go (Left line) = NewContent mempty (unlines [line])
-        go (Right conflict) =
-            case resolveConflict wsFixed of
-            NoResolution               -> NewContent (Result 0 0 1) (Conflict.pretty wsFixed)
-            Resolution trivialLines    -> NewContent (Result 1 0 0) trivialLines
-            PartialResolution newLines -> NewContent (Result 0 1 0) newLines
-            where
-                wsFixed = lineBreakFix $ untabified conflict
+        go (Right conflict) = formatResolution $ resolveConflict $ lineBreakFix $ untabified conflict
