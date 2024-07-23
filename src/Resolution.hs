@@ -140,8 +140,9 @@ resolveContent (Untabify mTabSize) =
         untabified = maybe id untabify mTabSize
         go (Left line) = NewContent mempty (unlines [line])
         go (Right conflict) =
-            case (resolveConflict . lineBreakFix . untabified) conflict of
-            NoResolution               -> NewContent (Result 0 0 1)
-                                          (Conflict.pretty (untabified conflict))
+            case (resolveConflict . lineBreakFix) wsFixed of
+            NoResolution               -> NewContent (Result 0 0 1) (Conflict.pretty wsFixed)
             Resolution trivialLines    -> NewContent (Result 1 0 0) trivialLines
             PartialResolution newLines -> NewContent (Result 0 1 0) newLines
+            where
+                wsFixed = untabified conflict
