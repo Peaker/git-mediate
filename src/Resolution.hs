@@ -28,6 +28,23 @@ resolveGen (Sides a base b)
     | a == b = Just a
     | otherwise = Nothing
 
+resolveGenLines :: Eq a => ResolutionOptions -> Sides [a] -> Maybe [a]
+resolveGenLines opts sides@(Sides a base b) =
+    case guard opts.trivial >> resolveGen sides of
+    Just x -> Just x
+    _ | opts.addedLines ->
+        case res a b <> res b a of
+        [x] -> Just x
+        _ -> Nothing
+    _ -> Nothing
+    where
+        n = length base
+        res x y =
+            [y <> drop n x | take n x == base] <>
+            [take initLen x <> y | drop initLen x == base]
+            where
+                initLen = length x - n
+
 reduceConflict :: Conflict -> Maybe String
 reduceConflict c
     | matchTop > 0 || matchBottom > 0 =
@@ -53,7 +70,7 @@ maybe' f x def = maybe def f x
 
 resolveConflict :: ResolutionOptions -> Conflict -> Resolution
 resolveConflict opts c =
-    maybe' (Resolution . unlines) (guard opts.trivial >> resolveGen c.bodies) $
+    maybe' (Resolution . unlines) (resolveGenLines opts c.bodies) $
     maybe' PartialResolution (guard opts.reduce >> reduceConflict c) $
     NoResolution c
 

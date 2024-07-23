@@ -12,6 +12,7 @@ data ResolutionOptions = ResolutionOpts
     , reduce :: Bool
     , untabify :: Maybe Int
     , lineEndings :: Bool
+    , addedLines :: Bool
     }
 
 parser :: O.Parser ResolutionOptions
@@ -26,8 +27,9 @@ parser =
             )
         )
     <*> noSwitch "line-endings" "Do not fix line-ending characters conflicts"
+    <*> O.switch (O.long "added-lines" <> O.help "Resolve added lines (experimental)")
     where
         noSwitch s t = not <$> O.switch (O.long ("no-" <> s) <> O.help t)
 
 isResolving :: ResolutionOptions -> Bool
-isResolving o = o.trivial || o.reduce || isJust o.untabify || o.lineEndings
+isResolving o = o.trivial || o.reduce || isJust o.untabify || o.lineEndings || o.addedLines
