@@ -33,12 +33,16 @@ resolveGenLines opts sides@(Sides a base b) =
     case guard opts.trivial >> resolveGen sides of
     Just x -> Just x
     _ | opts.addedLines ->
-        case res a b <> res b a of
+        case addedBothSides a b <> addedBothSides b a of
         [x] -> Just x
-        _ -> Nothing
+        _ ->
+            case res a b <> res b a of
+            [x] -> Just x
+            _ -> Nothing
     _ -> Nothing
     where
         n = length base
+        addedBothSides x y = [x <> drop n y | drop (length x - n) x == base && take n y == base]
         res x y =
             [y <> drop n x | take n x == base] <>
             [take initLen x <> y | drop initLen x == base]
