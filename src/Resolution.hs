@@ -49,15 +49,16 @@ resolveGenLines opts sides@(Sides a base b) =
             where
                 initLen = length x - n
 
-reduceConflict :: Conflict -> Maybe String
-reduceConflict c
-    | matchTop > 0 || matchBottom > 0 =
-        Just $ unlines $
-        take matchTop c.bodies.sideA ++
-        Conflict.prettyLines (Conflict.setEachBody unmatched c) ++
-        takeEnd matchBottom c.bodies.sideA
-    | otherwise = Nothing
+resolveConflict :: ResolutionOptions -> Conflict -> Resolution
+resolveConflict opts c
+    | matchTop == 0 && matchBottom == 0 || not opts.reduce =
+        maybe (NoResolution c) (Resolution . unlines) (resolveGenLines opts c.bodies)
+    | otherwise =
+        case resolveGenLines opts reduced.bodies of
+        Just x -> Resolution $ formatRes x
+        Nothing -> PartialResolution $ formatRes $ Conflict.prettyLines reduced
     where
+        formatRes mid = unlines $ take matchTop c.bodies.sideA <> mid <> takeEnd matchBottom c.bodies.sideA
         match base a b
             | null base = lengthOfCommonPrefix a b
             | otherwise = minimum $ map (lengthOfCommonPrefix base) [a, b]
@@ -67,16 +68,7 @@ reduceConflict c
         dropEnd count xs = take (length xs - count) xs
         takeEnd count xs = drop (length xs - count) xs
         unmatched xs = drop matchTop $ dropEnd matchBottom xs
-
--- | Like 'maybe', but with the arguments flipped.
-maybe' :: (a -> b) -> Maybe a -> b -> b
-maybe' f x def = maybe def f x
-
-resolveConflict :: ResolutionOptions -> Conflict -> Resolution
-resolveConflict opts c =
-    maybe' (Resolution . unlines) (resolveGenLines opts c.bodies) $
-    maybe' PartialResolution (guard opts.reduce >> reduceConflict c) $
-    NoResolution c
+        reduced = Conflict.setEachBody unmatched c
 
 lengthOfCommonPrefix :: Eq a => [a] -> [a] -> Int
 lengthOfCommonPrefix x y = length $ takeWhile id $ zipWith (==) x y
