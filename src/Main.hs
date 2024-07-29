@@ -10,9 +10,9 @@ import           Data.Algorithm.Diff (Diff, PolyDiff(..))
 import           Data.Either (rights)
 import           Data.Foldable (asum, traverse_)
 import           Data.List (isPrefixOf)
-import           Data.List.Split (splitOn)
 import           Data.Maybe (mapMaybe)
 import           Environment (checkConflictStyle, openEditor, shouldUseColorByTerminal)
+import qualified Git
 import qualified Opts
 import           Opts (Options(..))
 import           PPDiff (ppDiff, ColorEnable(..))
@@ -20,13 +20,12 @@ import           Resolution (Result(..), NewContent(..), Untabify(..))
 import qualified Resolution
 import           SideDiff (SideDiff(..), getConflictDiffs, getConflictDiff2s)
 import           StrUtils (ensureNewline, stripNewline)
-import           System.Directory (renameFile, removeFile, getCurrentDirectory, getPermissions, setPermissions)
+import           System.Directory (renameFile, removeFile, getPermissions, setPermissions)
 import           System.Exit (ExitCode(..), exitWith)
-import           System.FilePath ((<.>), makeRelative, joinPath, splitPath)
+import           System.FilePath ((<.>))
 import qualified System.FilePath as FilePath
-import           System.IO (hPutStr, stderr)
 import qualified System.PosixCompat.Files as PosixFiles
-import           System.Process (callProcess, readProcess, readProcessWithExitCode)
+import           System.Process (callProcess, readProcess)
 
 import           Prelude.Compat
 
@@ -36,10 +35,6 @@ markerPrefix = replicate 7
 
 markerLine :: Char -> String -> String
 markerLine c str = markerPrefix c ++ " " ++ str ++ "\n"
-
-gitAdd :: FilePath -> IO ()
-gitAdd fileName =
-    callProcess "git" ["add", "--", fileName]
 
 trimDiff :: Int -> [Diff a] -> [Diff a]
 trimDiff contextLen =
@@ -85,7 +80,7 @@ handleFileResult :: ColorEnable -> Options -> FilePath -> NewContent -> IO ()
 handleFileResult colorEnable opts fileName res
     | successes == 0 && allGood =
       do  putStrLn $ fileName ++ ": No conflicts, git-adding"
-          gitAdd fileName
+          Git.add fileName
     | successes == 0 && reductions == 0 =
       do  putStrLn $ concat
               [ fileName, ": Failed to resolve any of the "
@@ -104,7 +99,7 @@ handleFileResult colorEnable opts fileName res
               ]
           overwrite fileName res.newContent
           if allGood
-              then gitAdd fileName
+              then Git.add fileName
               else doDump
     where
         allGood = Resolution.fullySuccessful res.result
@@ -125,16 +120,6 @@ resolve colorEnable opts fileName =
             . Conflict.parse
             <$> readFile fileName
         resolutions.result <$ handleFileResult colorEnable opts fileName resolutions
-
-relativePath :: FilePath -> FilePath -> FilePath
-relativePath base path
-    | rel /= path = rel
-    | revRel /= base =
-          joinPath $ replicate (length (splitPath revRel)) ".."
-    | otherwise = path
-    where
-        rel = makeRelative base path
-        revRel = makeRelative path base
 
 (</>) :: FilePath -> FilePath -> FilePath
 "." </> p = p
@@ -196,69 +181,31 @@ removeFileIfEmpty path =
             do  removeFile path
                 callProcess "git" ["add", "-u", "--", path]
 
-type StatusCode = (Char, Char)
-
-data StatusLine = StatusLine
-    { statusCode :: StatusCode
-    , statusArgs :: String
-    }
-
-parseStatusZ :: [String] -> Either String [StatusLine]
-parseStatusZ [""] = Right []
-parseStatusZ (('R':' ':dst):_src:rest) =
-    -- We don't currently do anything with rename statuses so _src is ignored
-    (StatusLine ('R', ' ') dst :) <$> parseStatusZ rest
--- TODO: Which other statuses have two fields?
-parseStatusZ ((x:y:' ':arg):rest) = (StatusLine (x, y) arg :) <$> parseStatusZ rest
-parseStatusZ part = Left ("Cannot parse status -z part: " <> show part)
-
-getStatusPorcelain :: IO [StatusLine]
-getStatusPorcelain =
-    do  (resCode, statusZ, statusStderr) <-
-            readProcessWithExitCode "git" ["status", "-z"] ""
-        when (resCode /= ExitSuccess) $ do
-            -- Print git's error message. Usually -
-            -- "fatal: Not a git repository (or any of the parent directories): .git"
-            hPutStr stderr statusStderr
-            exitWith resCode
-        case parseStatusZ $ splitOn "\0" statusZ of
-            Right res -> pure res
-            Left err ->
-                do
-                    hPutStr stderr err
-                    exitWith (ExitFailure 1)
-
-getGitRootDir :: IO FilePath
-getGitRootDir =
-  do  cwd <- getCurrentDirectory
-      relativePath cwd . stripNewline <$>
-          readProcess "git" ["rev-parse", "--show-toplevel"] ""
-
-matchStatus :: StatusCode -> StatusLine -> Maybe String
+matchStatus :: Git.StatusCode -> Git.StatusLine -> Maybe String
 matchStatus code line
-    | statusCode line == code = Just (statusArgs line)
+    | line.statusCode == code = Just line.statusArgs
     | otherwise = Nothing
 
-makeFilesMatchingPrefixes :: IO ([StatusCode] -> IO [FilePath])
+makeFilesMatchingPrefixes :: IO ([Git.StatusCode] -> IO [FilePath])
 makeFilesMatchingPrefixes =
-  do  statusPorcelain <- getStatusPorcelain
-      rootDir <- getGitRootDir
+  do  statusPorcelain <- Git.getStatus
+      rootDir <- Git.getRootDir
       let rootRelativeFiles =
               filterM (fmap not . isDirectory) . map (rootDir </>)
       let decode x =
               case reads x of
               [(r, "")] -> r
               _ -> x
-      let firstMatchingStatus :: [StatusCode] -> StatusLine -> Maybe String
+      let firstMatchingStatus :: [Git.StatusCode] -> Git.StatusLine -> Maybe String
           firstMatchingStatus statuses =
               fmap decode . asum . traverse matchStatus statuses
-      let filesMatchingStatuses :: [StatusCode] -> IO [FilePath]
+      let filesMatchingStatuses :: [Git.StatusCode] -> IO [FilePath]
           filesMatchingStatuses statuses =
               rootRelativeFiles . mapMaybe (firstMatchingStatus statuses)
               $ statusPorcelain
       pure filesMatchingStatuses
 
-statusCodes :: Char -> Char -> [StatusCode]
+statusCodes :: Char -> Char -> [Git.StatusCode]
 statusCodes x y
     | x == y = [(x, y)]
     | otherwise = [(x, y), (y, x)]

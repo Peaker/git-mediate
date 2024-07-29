@@ -63,6 +63,7 @@ executable git-mediate
   main-is:             Main.hs
   other-modules:       Conflict
                      , Environment
+                     , Git
                      , Opts
                      , PPDiff
                      , Resolution
