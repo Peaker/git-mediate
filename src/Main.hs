@@ -19,7 +19,7 @@ import           PPDiff (ppDiff, ColorEnable(..))
 import           Resolution (Result(..), NewContent(..), Untabify(..))
 import qualified Resolution
 import           SideDiff (SideDiff(..), getConflictDiffs, getConflictDiff2s)
-import           StrUtils (ensureNewline, stripNewline)
+import           StrUtils (ensureNewline)
 import           System.Directory (renameFile, removeFile, getPermissions, setPermissions)
 import           System.Exit (ExitCode(..), exitWith)
 import           System.FilePath ((<.>))
@@ -131,13 +131,10 @@ isDirectory x = PosixFiles.isDirectory <$> PosixFiles.getFileStatus x
 withAllStageFiles ::
     FilePath -> (FilePath -> Maybe FilePath -> Maybe FilePath -> IO b) -> IO b
 withAllStageFiles path action =
-    do  let stdin = ""
-        [baseTmpRaw, localTmpRaw, remoteTmpRaw] <-
+    do  [baseTmpRaw, localTmpRaw, remoteTmpRaw] <-
             take 3 . words <$>
-            readProcess "git" ["checkout-index", "--stage=all", "--", path] stdin
-        cdup <-
-            takeWhile (/= '\0') . stripNewline <$>
-            readProcess "git" ["rev-parse", "--show-cdup"] stdin
+            readProcess "git" ["checkout-index", "--stage=all", "--", path] ""
+        cdup <- Git.getCdUp
         let maybePath "." = Nothing
             maybePath p = Just (cdup </> p)
         let mLocalTmp = maybePath localTmpRaw

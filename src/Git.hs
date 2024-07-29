@@ -1,5 +1,5 @@
 module Git
-    ( StatusLine(..), StatusCode, getStatus, getRootDir, add
+    ( StatusLine(..), StatusCode, getStatus, getRootDir, getCdUp, add
     ) where
 
 import           Control.Monad (when)
@@ -61,3 +61,7 @@ relativePath base path
 
 add :: FilePath -> IO ()
 add fileName = callProcess "git" ["add", "--", fileName]
+
+-- TODO: Is this different from getRootDir?
+getCdUp :: IO FilePath
+getCdUp = takeWhile (/= '\0') . stripNewline <$> readProcess "git" ["rev-parse", "--show-cdup"] ""
