@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts, NoImplicitPrelude, DeriveTraversable, NamedFieldPuns, DerivingVia, DeriveGeneric, OverloadedRecordDot #-}
+{-# LANGUAGE FlexibleContexts, NoImplicitPrelude, DeriveTraversable, NamedFieldPuns #-}
+{-# LANGUAGE DerivingVia, DeriveGeneric, OverloadedRecordDot, LambdaCase #-}
 
 module Conflict
     ( Conflict(..), Sides(..), SrcContent(..)
@@ -84,16 +85,16 @@ tryReadUpToMarker c mCount =
 readUpToMarker ::
     MonadState [SrcContent] m =>
     Char -> Maybe Int -> m ([SrcContent], SrcContent)
-readUpToMarker c mCount = do
-    res <- tryReadUpToMarker c mCount
-    case res of
-        (ls, Just h) -> pure (ls, h)
-        (ls, Nothing) ->
-            error $ concat
-            [ "Parse error: failed reading up to marker: "
-            , show c, ", got:"
-            , concatMap (\l -> "\n" ++ show l.lineNo ++ "\t" ++ l.content) $ take 5 ls
-            ]
+readUpToMarker c mCount =
+    tryReadUpToMarker c mCount >>=
+    \case
+    (ls, Just h) -> pure (ls, h)
+    (ls, Nothing) ->
+        error $ concat
+        [ "Parse error: failed reading up to marker: "
+        , show c, ", got:"
+        , concatMap (\l -> "\n" ++ show l.lineNo ++ "\t" ++ l.content) $ take 5 ls
+        ]
 
 parseConflict :: MonadState [SrcContent] m => SrcContent -> m Conflict
 parseConflict markerA =
