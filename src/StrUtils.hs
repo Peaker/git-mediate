@@ -4,9 +4,9 @@ module StrUtils
     ( stripNewline, ensureNewline
     ) where
 
-import           Data.List (isSuffixOf)
+import Data.List (isSuffixOf)
 
-import           Prelude.Compat
+import Prelude.Compat
 
 stripNewline :: String -> String
 stripNewline x

@@ -5,10 +5,10 @@ module SideDiff
     , getConflictDiffs, getConflictDiff2s
     ) where
 
-import           Conflict (Conflict(..), Sides(..), SrcContent(..))
-import           Data.Algorithm.Diff (Diff, getDiff)
+import Conflict (Conflict(..), Sides(..), SrcContent(..))
+import Data.Algorithm.Diff (Diff, getDiff)
 
-import           Prelude.Compat
+import Prelude.Compat
 
 data Side = A | B
     deriving (Eq, Ord, Show)

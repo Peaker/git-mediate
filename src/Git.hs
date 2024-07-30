@@ -2,14 +2,14 @@ module Git
     ( StatusLine(..), StatusCode, getStatus, getRootDir, getCdUp, add
     ) where
 
-import           Control.Monad (when)
-import           Data.List.Split (splitOn)
-import           StrUtils (stripNewline)
-import           System.Directory (getCurrentDirectory)
-import           System.Exit (ExitCode(..), exitWith)
-import           System.FilePath (makeRelative, joinPath, splitPath)
-import           System.IO (hPutStr, stderr)
-import           System.Process (callProcess, readProcess, readProcessWithExitCode)
+import Control.Monad (when)
+import Data.List.Split (splitOn)
+import StrUtils (stripNewline)
+import System.Directory (getCurrentDirectory)
+import System.Exit (ExitCode(..), exitWith)
+import System.FilePath (makeRelative, joinPath, splitPath)
+import System.IO (hPutStr, stderr)
+import System.Process (callProcess, readProcess, readProcessWithExitCode)
 
 type StatusCode = (Char, Char)
 
