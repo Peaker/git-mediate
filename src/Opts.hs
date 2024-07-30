@@ -28,7 +28,7 @@ data CmdArgs = CmdVersion | CmdOptions Options
 parser :: O.Parser CmdArgs
 parser =
     O.flag' CmdVersion (O.long "version" <> O.help "Print the version and quit")
-    <|> CmdOptions
+        <|> CmdOptions
         <$> ( Options
             <$> O.switch
                 ( O.long "editor" <> O.short 'e'

@@ -7,11 +7,11 @@ module Conflict
     , parse
     ) where
 
-import Control.Monad.State (MonadState, state, evalStateT)
+import Control.Monad.State (MonadState, evalStateT, state)
 import Control.Monad.Writer (runWriter, tell)
 import Data.Maybe (fromMaybe)
-import Generic.Data (Generically1(..))
 import GHC.Generics (Generic1)
+import Generic.Data (Generically1(..))
 
 import Prelude.Compat
 
@@ -19,19 +19,22 @@ data Sides a = Sides
     { sideA :: a
     , sideBase :: a
     , sideB :: a
-    } deriving (Functor, Foldable, Traversable, Show, Eq, Ord, Generic1)
-    deriving Applicative via Generically1 Sides
+    }
+    deriving (Functor, Foldable, Traversable, Show, Eq, Ord, Generic1)
+    deriving (Applicative) via Generically1 Sides
 
 data SrcContent = SrcContent
     { lineNo :: Int
     , content :: String
-    } deriving Show
+    }
+    deriving (Show)
 
 data Conflict = Conflict
-    { markers   :: Sides SrcContent -- The markers at the beginning of sections
-    , markerEnd :: SrcContent       -- The ">>>>>>>...." marker at the end of the conflict
-    , bodies    :: Sides [String]
-    } deriving Show
+    { markers :: Sides SrcContent -- The markers at the beginning of sections
+    , markerEnd :: SrcContent -- The ">>>>>>>...." marker at the end of the conflict
+    , bodies :: Sides [String]
+    }
+    deriving (Show)
 
 setBodies :: (Sides [String] -> Sides [String]) -> Conflict -> Conflict
 setBodies f c = c{bodies = f c.bodies}
@@ -84,7 +87,7 @@ readUpToMarker ::
 readUpToMarker c mCount = do
     res <- tryReadUpToMarker c mCount
     case res of
-        (ls, Just h)  -> pure (ls, h)
+        (ls, Just h) -> pure (ls, h)
         (ls, Nothing) ->
             error $ concat
             [ "Parse error: failed reading up to marker: "
@@ -94,7 +97,8 @@ readUpToMarker c mCount = do
 
 parseConflict :: MonadState [SrcContent] m => SrcContent -> m Conflict
 parseConflict markerA =
-    do  (linesA   , markerBase) <- readUpToMarker '|' markerCount
+    do
+        (linesA, markerBase) <- readUpToMarker '|' markerCount
         (linesBase, markerB)    <- readUpToMarker '=' markerCount
         (linesB   , markerEnd)  <- readUpToMarker '>' markerCount
         pure Conflict
@@ -110,13 +114,15 @@ parseFromNumberedLines =
     snd . runWriter . evalStateT loop
     where
         loop =
-            do  (ls, mMarkerA) <- tryReadUpToMarker '<' Nothing
+            do
+                (ls, mMarkerA) <- tryReadUpToMarker '<' Nothing
                 tell $ map (Left . (.content)) ls
                 case mMarkerA of
                     Nothing -> pure ()
                     Just markerA ->
-                        do  tell . pure . Right =<< parseConflict markerA
+                        do
+                            tell . pure . Right =<< parseConflict markerA
                             loop
 
 parse :: String -> [Either String Conflict]
-parse = parseFromNumberedLines . zipWith SrcContent [1..] . lines
+parse = parseFromNumberedLines . zipWith SrcContent [1 ..] . lines

@@ -1,7 +1,7 @@
 module PPDiff
-  ( ColorEnable(..)
-  , ppDiff
-  ) where
+    ( ColorEnable (..)
+    , ppDiff
+    ) where
 
 import Data.Algorithm.Diff (Diff, PolyDiff(..))
 import System.Console.ANSI

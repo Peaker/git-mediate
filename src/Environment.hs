@@ -25,7 +25,8 @@ shouldUseColorByTerminal =
 
 getConflictStyle :: IO String
 getConflictStyle =
-    do  (exitCode, output, _) <- readProcessWithExitCode "git" ["config", "merge.conflictstyle"] stdin
+    do
+        (exitCode, output, _) <- readProcessWithExitCode "git" ["config", "merge.conflictstyle"] stdin
         case exitCode of
             ExitSuccess -> pure $ stripNewline output
             ExitFailure 1 -> pure "unset"
@@ -39,9 +40,11 @@ setConflictStyle =
 
 checkConflictStyle :: Options -> IO ()
 checkConflictStyle opts =
-    do  conflictStyle <- getConflictStyle
+    do
+        conflictStyle <- getConflictStyle
         unless (conflictStyle `elem` ["diff3", "zdiff3"]) $
-            do  unless opts.shouldSetConflictStyle $
+            do
+                unless opts.shouldSetConflictStyle $
                     fail $ concat
                     [ "merge.conflictstyle must be diff3 but is "
                     , show conflictStyle
@@ -60,7 +63,8 @@ checkConflictStyle opts =
 openEditor :: Options -> FilePath -> Int -> IO ()
 openEditor opts path lineNo
     | opts.shouldUseEditor =
-        do  editor <- getEnv "EDITOR"
+        do
+            editor <- getEnv "EDITOR"
             let cmdOpts =
                     case editor of
                     "code" -> ["--goto", path <> ":" <> show lineNo]

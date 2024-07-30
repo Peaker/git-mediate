@@ -52,23 +52,27 @@ dumpDiffs colorEnable opts filePath count (idx, conflict) =
         when opts.shouldDumpDiff2 $ dumpDiff2 $ getConflictDiff2s conflict
     where
         dumpDiff d =
-            do  putStrLn $ concat
+            do
+                putStrLn $ concat
                     [filePath, ":", show d.marker.lineNo, ":Diff", show d.side, ": ", d.marker.content]
                 putStr $ unlines $ map (ppDiff colorEnable) (trimDiff opts.diffsContext d.diff)
         dumpDiff2 (markerA, markerB, d) =
-            do  putStrLn $ concat [filePath, ":", show markerA.lineNo, " <->", markerA.content]
+            do
+                putStrLn $ concat [filePath, ":", show markerA.lineNo, " <->", markerA.content]
                 putStrLn $ concat [filePath, ":", show markerB.lineNo, ": ", markerB.content]
                 putStr $ unlines $ map (ppDiff colorEnable) d
 
 dumpAndOpenEditor :: ColorEnable -> Options -> FilePath -> [Conflict] -> IO ()
 dumpAndOpenEditor colorEnable opts path conflicts =
-    do  when (opts.shouldDumpDiffs || opts.shouldDumpDiff2) $
-            traverse_ (dumpDiffs colorEnable opts path (length conflicts)) (zip [1..] conflicts)
+    do
+        when (opts.shouldDumpDiffs || opts.shouldDumpDiff2) $
+            traverse_ (dumpDiffs colorEnable opts path (length conflicts)) (zip [1 ..] conflicts)
         openEditor opts path ((Conflict.lineNo . Conflict.sideA . markers . head) conflicts)
 
 overwrite :: FilePath -> String -> IO ()
 overwrite fileName content =
-    do  oldPermissions <- getPermissions fileName
+    do
+        oldPermissions <- getPermissions fileName
         renameFile fileName bkup
         writeFile fileName content
         setPermissions fileName oldPermissions
@@ -79,28 +83,32 @@ overwrite fileName content =
 handleFileResult :: ColorEnable -> Options -> FilePath -> NewContent -> IO ()
 handleFileResult colorEnable opts fileName res
     | successes == 0 && allGood =
-      do  putStrLn $ fileName ++ ": No conflicts, git-adding"
-          Git.add fileName
+        do
+            putStrLn $ fileName ++ ": No conflicts, git-adding"
+            Git.add fileName
     | successes == 0 && reductions == 0 =
-      do  putStrLn $ concat
-              [ fileName, ": Failed to resolve any of the "
-              , show failures, " conflicts" ]
-          doDump
+        do
+            putStrLn $ concat
+                [ fileName, ": Failed to resolve any of the "
+                , show failures, " conflicts" ]
+            doDump
     | successes == 0 =
-      do  putStrLn $ concat
-              [ fileName, ": Reduced ", show reductions, " conflicts"]
-          overwrite fileName res.newContent
-          doDump
+        do
+            putStrLn $ concat
+                [fileName, ": Reduced ", show reductions, " conflicts"]
+            overwrite fileName res.newContent
+            doDump
     | otherwise =
-      do  putStrLn $ concat
-              [ fileName, ": Successfully resolved ", show successes
-              , " conflicts (failed to resolve " ++ show (reductions + failures) ++ " conflicts)"
-              , if allGood then ", git adding" else ""
-              ]
-          overwrite fileName res.newContent
-          if allGood
-              then Git.add fileName
-              else doDump
+        do
+            putStrLn $ concat
+                [ fileName, ": Successfully resolved ", show successes
+                , " conflicts (failed to resolve ", show (reductions + failures), " conflicts)"
+                , if allGood then ", git adding" else ""
+                ]
+            overwrite fileName res.newContent
+            if allGood
+                then Git.add fileName
+                else doDump
     where
         allGood = Resolution.fullySuccessful res.result
         doDump =
@@ -131,9 +139,10 @@ isDirectory x = PosixFiles.isDirectory <$> PosixFiles.getFileStatus x
 withAllStageFiles ::
     FilePath -> (FilePath -> Maybe FilePath -> Maybe FilePath -> IO b) -> IO b
 withAllStageFiles path action =
-    do  [baseTmpRaw, localTmpRaw, remoteTmpRaw] <-
-            take 3 . words <$>
-            readProcess "git" ["checkout-index", "--stage=all", "--", path] ""
+    do
+        [baseTmpRaw, localTmpRaw, remoteTmpRaw] <-
+            take 3 . words
+                <$> readProcess "git" ["checkout-index", "--stage=all", "--", path] ""
         cdup <- Git.getCdUp
         let maybePath "." = Nothing
             maybePath p = Just (cdup </> p)
@@ -141,15 +150,16 @@ withAllStageFiles path action =
             mRemoteTmp = maybePath remoteTmpRaw
             baseTmp = cdup </> baseTmpRaw
         action baseTmp mLocalTmp mRemoteTmp
-            `E.finally`
-            do  removeFile baseTmp
+            `E.finally` do
+                removeFile baseTmp
                 traverse_ removeFile mLocalTmp
                 traverse_ removeFile mRemoteTmp
 
 deleteModifyConflictAddMarkers :: FilePath -> IO ()
 deleteModifyConflictAddMarkers path =
     withAllStageFiles path $ \baseTmp mLocalTmp mRemoteTmp ->
-    do  baseContent <- readFile baseTmp
+    do
+        baseContent <- readFile baseTmp
         localContent <- foldMap readFile mLocalTmp
         remoteContent <- foldMap readFile mRemoteTmp
         overwrite path $
@@ -165,17 +175,21 @@ deleteModifyConflictAddMarkers path =
 
 deleteModifyConflictHandle :: FilePath -> IO ()
 deleteModifyConflictHandle path =
-    do  marked <-
+    do
+        marked <-
             any (markerPrefix '<' `isPrefixOf`) . lines <$> readFile path
         unless marked $
-            do  putStrLn $ show path ++ " has a delete/modify conflict. Adding conflict markers"
+            do
+                putStrLn $ show path ++ " has a delete/modify conflict. Adding conflict markers"
                 deleteModifyConflictAddMarkers path
 
 removeFileIfEmpty :: FilePath -> IO ()
 removeFileIfEmpty path =
-    do  isEmpty <- null <$> readFile path
+    do
+        isEmpty <- null <$> readFile path
         when isEmpty $
-            do  removeFile path
+            do
+                removeFile path
                 callProcess "git" ["add", "-u", "--", path]
 
 matchStatus :: Git.StatusCode -> Git.StatusLine -> Maybe String
@@ -185,22 +199,23 @@ matchStatus code line
 
 makeFilesMatchingPrefixes :: IO ([Git.StatusCode] -> IO [FilePath])
 makeFilesMatchingPrefixes =
-  do  statusPorcelain <- Git.getStatus
-      rootDir <- Git.getRootDir
-      let rootRelativeFiles =
-              filterM (fmap not . isDirectory) . map (rootDir </>)
-      let decode x =
-              case reads x of
-              [(r, "")] -> r
-              _ -> x
-      let firstMatchingStatus :: [Git.StatusCode] -> Git.StatusLine -> Maybe String
-          firstMatchingStatus statuses =
-              fmap decode . asum . traverse matchStatus statuses
-      let filesMatchingStatuses :: [Git.StatusCode] -> IO [FilePath]
-          filesMatchingStatuses statuses =
-              rootRelativeFiles . mapMaybe (firstMatchingStatus statuses)
-              $ statusPorcelain
-      pure filesMatchingStatuses
+    do
+        statusPorcelain <- Git.getStatus
+        rootDir <- Git.getRootDir
+        let rootRelativeFiles =
+                filterM (fmap not . isDirectory) . map (rootDir </>)
+        let decode x =
+                case reads x of
+                [(r, "")] -> r
+                _ -> x
+        let firstMatchingStatus :: [Git.StatusCode] -> Git.StatusLine -> Maybe String
+            firstMatchingStatus statuses =
+                fmap decode . asum . traverse matchStatus statuses
+        let filesMatchingStatuses :: [Git.StatusCode] -> IO [FilePath]
+            filesMatchingStatuses statuses =
+                rootRelativeFiles . mapMaybe (firstMatchingStatus statuses)
+                $ statusPorcelain
+        pure filesMatchingStatuses
 
 statusCodes :: Char -> Char -> [Git.StatusCode]
 statusCodes x y
@@ -209,26 +224,27 @@ statusCodes x y
 
 mediateAll :: ColorEnable -> Options -> IO Result
 mediateAll colorEnable opts =
-  do  filesMatchingPrefixes <- makeFilesMatchingPrefixes
+    do
+        filesMatchingPrefixes <- makeFilesMatchingPrefixes
 
--- from git-diff manpage:
--- Added (A), Copied (C), Deleted (D), Modified (M), Renamed (R),
--- have their type (i.e. regular file, symlink, submodule, ...) changed (T),
--- are Unmerged (U), are Unknown (X), or have had their pairing Broken (B)
+        -- from git-diff manpage:
+        -- Added (A), Copied (C), Deleted (D), Modified (M), Renamed (R),
+        -- have their type (i.e. regular file, symlink, submodule, ...) changed (T),
+        -- are Unmerged (U), are Unknown (X), or have had their pairing Broken (B)
 
-      deleteModifyConflicts <- filesMatchingPrefixes (statusCodes 'D' 'U')
+        deleteModifyConflicts <- filesMatchingPrefixes (statusCodes 'D' 'U')
 
-      traverse_ deleteModifyConflictHandle deleteModifyConflicts
+        traverse_ deleteModifyConflictHandle deleteModifyConflicts
 
-      res <-
-          filesMatchingPrefixes
-          ([('U', 'U'), ('A', 'A'), ('D', 'A'), ('D', 'U')] >>= uncurry statusCodes)
-          >>= foldMap (resolve colorEnable opts)
+        res <-
+            filesMatchingPrefixes
+            ([('U', 'U'), ('A', 'A'), ('D', 'A'), ('D', 'U')] >>= uncurry statusCodes)
+             >>= foldMap (resolve colorEnable opts)
 
-      -- Heuristically delete files that were remove/modify conflict
-      -- and ended up with empty content
-      traverse_ removeFileIfEmpty deleteModifyConflicts
-      pure res
+        -- Heuristically delete files that were remove/modify conflict
+        -- and ended up with empty content
+        traverse_ removeFileIfEmpty deleteModifyConflicts
+        pure res
 
 exitCodeOf :: Result -> ExitCode
 exitCodeOf res
@@ -240,10 +256,11 @@ exitProcess = exitWith . exitCodeOf
 
 main :: IO ()
 main =
-  do  opts <- Opts.getOpts
-      colorEnable <- maybe shouldUseColorByTerminal pure opts.shouldUseColor
-      checkConflictStyle opts
-      case opts.mergeSpecificFile of
-          Nothing -> mediateAll colorEnable opts
-          Just path -> resolve colorEnable opts path
-          >>= exitProcess
+    do
+        opts <- Opts.getOpts
+        colorEnable <- maybe shouldUseColorByTerminal pure opts.shouldUseColor
+        checkConflictStyle opts
+        case opts.mergeSpecificFile of
+            Nothing -> mediateAll colorEnable opts
+            Just path -> resolve colorEnable opts path
+            >>= exitProcess

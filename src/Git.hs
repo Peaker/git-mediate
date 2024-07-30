@@ -29,7 +29,8 @@ parseStatusZ part = Left ("Cannot parse status -z part: " <> show part)
 
 getStatus :: IO [StatusLine]
 getStatus =
-    do  (resCode, statusZ, statusStderr) <-
+    do
+        (resCode, statusZ, statusStderr) <-
             readProcessWithExitCode "git" ["status", "-z"] ""
         when (resCode /= ExitSuccess) $ do
             -- Print git's error message. Usually -
@@ -45,15 +46,16 @@ getStatus =
 
 getRootDir :: IO FilePath
 getRootDir =
-  do  cwd <- getCurrentDirectory
-      relativePath cwd . stripNewline <$>
-          readProcess "git" ["rev-parse", "--show-toplevel"] ""
+    do
+        cwd <- getCurrentDirectory
+        relativePath cwd . stripNewline
+            <$> readProcess "git" ["rev-parse", "--show-toplevel"] ""
 
 relativePath :: FilePath -> FilePath -> FilePath
 relativePath base path
     | rel /= path = rel
     | revRel /= base =
-          joinPath $ replicate (length (splitPath revRel)) ".."
+        joinPath $ replicate (length (splitPath revRel)) ".."
     | otherwise = path
     where
         rel = makeRelative base path
