@@ -19,11 +19,10 @@ import           PPDiff (ppDiff, ColorEnable(..))
 import           Resolution (Result(..), NewContent(..), Untabify(..))
 import qualified Resolution
 import           SideDiff (SideDiff(..), getConflictDiffs, getConflictDiff2s)
-import           StrUtils (ensureNewline)
+import           StrUtils ((</>), ensureNewline)
 import           System.Directory (renameFile, removeFile, getPermissions, setPermissions)
 import           System.Exit (ExitCode(..), exitWith)
 import           System.FilePath ((<.>))
-import qualified System.FilePath as FilePath
 import qualified System.PosixCompat.Files as PosixFiles
 import           System.Process (callProcess, readProcess)
 
@@ -128,10 +127,6 @@ resolve colorEnable opts fileName =
             . Conflict.parse
             <$> readFile fileName
         resolutions.result <$ handleFileResult colorEnable opts fileName resolutions
-
-(</>) :: FilePath -> FilePath -> FilePath
-"." </> p = p
-d </> p = d FilePath.</> p
 
 isDirectory :: FilePath -> IO Bool
 isDirectory x = PosixFiles.isDirectory <$> PosixFiles.getFileStatus x
