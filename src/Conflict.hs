@@ -44,7 +44,7 @@ setStrings = setEachBody . map
 
 prettyLines :: Conflict -> [String]
 prettyLines c =
-    concat ((:) <$> ((.content) <$> c.markers) <*> c.bodies) <> [c.markerEnd.content]
+    concat ((:) . content <$> c.markers <*> c.bodies) <> [c.markerEnd.content]
 
 pretty :: Conflict -> String
 pretty = unlines . prettyLines
