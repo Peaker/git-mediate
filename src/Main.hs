@@ -5,12 +5,11 @@ module Main (main) where
 import           Conflict (Conflict(..))
 import qualified Conflict
 import qualified Control.Exception as E
-import           Control.Monad (when, unless, filterM)
+import           Control.Monad (when, unless)
 import           Data.Algorithm.Diff (Diff, PolyDiff(..))
 import           Data.Either (rights)
-import           Data.Foldable (asum, traverse_)
+import           Data.Foldable (traverse_)
 import           Data.List (isPrefixOf)
-import           Data.Maybe (mapMaybe)
 import           Environment (checkConflictStyle, openEditor, shouldUseColorByTerminal)
 import qualified Git
 import qualified Opts
@@ -23,7 +22,6 @@ import           StrUtils ((</>), ensureNewline)
 import           System.Directory (renameFile, removeFile, getPermissions, setPermissions)
 import           System.Exit (ExitCode(..), exitWith)
 import           System.FilePath ((<.>))
-import qualified System.PosixCompat.Files as PosixFiles
 import           System.Process (callProcess, readProcess)
 
 import           Prelude.Compat
@@ -128,9 +126,6 @@ resolve colorEnable opts fileName =
             <$> readFile fileName
         resolutions.result <$ handleFileResult colorEnable opts fileName resolutions
 
-isDirectory :: FilePath -> IO Bool
-isDirectory x = PosixFiles.isDirectory <$> PosixFiles.getFileStatus x
-
 withAllStageFiles ::
     FilePath -> (FilePath -> Maybe FilePath -> Maybe FilePath -> IO b) -> IO b
 withAllStageFiles path action =
@@ -187,31 +182,6 @@ removeFileIfEmpty path =
                 removeFile path
                 callProcess "git" ["add", "-u", "--", path]
 
-matchStatus :: Git.StatusCode -> Git.StatusLine -> Maybe String
-matchStatus code line
-    | line.statusCode == code = Just line.statusArgs
-    | otherwise = Nothing
-
-makeFilesMatchingPrefixes :: IO ([Git.StatusCode] -> IO [FilePath])
-makeFilesMatchingPrefixes =
-    do
-        statusPorcelain <- Git.getStatus
-        rootDir <- Git.getRootDir
-        let rootRelativeFiles =
-                filterM (fmap not . isDirectory) . map (rootDir </>)
-        let decode x =
-                case reads x of
-                [(r, "")] -> r
-                _ -> x
-        let firstMatchingStatus :: [Git.StatusCode] -> Git.StatusLine -> Maybe String
-            firstMatchingStatus statuses =
-                fmap decode . asum . traverse matchStatus statuses
-        let filesMatchingStatuses :: [Git.StatusCode] -> IO [FilePath]
-            filesMatchingStatuses statuses =
-                rootRelativeFiles . mapMaybe (firstMatchingStatus statuses)
-                $ statusPorcelain
-        pure filesMatchingStatuses
-
 statusCodes :: Char -> Char -> [Git.StatusCode]
 statusCodes x y
     | x == y = [(x, y)]
@@ -220,7 +190,7 @@ statusCodes x y
 mediateAll :: ColorEnable -> Options -> IO Result
 mediateAll colorEnable opts =
     do
-        filesMatchingPrefixes <- makeFilesMatchingPrefixes
+        filesMatchingPrefixes <- Git.makeFilesMatchingPrefixes
 
         -- from git-diff manpage:
         -- Added (A), Copied (C), Deleted (D), Modified (M), Renamed (R),

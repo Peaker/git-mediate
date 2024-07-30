@@ -1,15 +1,23 @@
+{-# LANGUAGE NoImplicitPrelude, OverloadedRecordDot #-}
+
 module Git
     ( StatusLine(..), StatusCode, getStatus, getRootDir, getCdUp, add
+    , makeFilesMatchingPrefixes
     ) where
 
-import Control.Monad (when)
-import Data.List.Split (splitOn)
-import StrUtils (stripNewline)
-import System.Directory (getCurrentDirectory)
-import System.Exit (ExitCode(..), exitWith)
-import System.FilePath (makeRelative, joinPath, splitPath)
-import System.IO (hPutStr, stderr)
-import System.Process (callProcess, readProcess, readProcessWithExitCode)
+import           Control.Monad (when, filterM)
+import           Data.Foldable (asum)
+import           Data.List.Split (splitOn)
+import           Data.Maybe (mapMaybe)
+import           StrUtils ((</>), stripNewline)
+import           System.Directory (getCurrentDirectory)
+import           System.Exit (ExitCode(..), exitWith)
+import           System.FilePath (makeRelative, joinPath, splitPath)
+import           System.IO (hPutStr, stderr)
+import qualified System.PosixCompat.Files as PosixFiles
+import           System.Process (callProcess, readProcess, readProcessWithExitCode)
+
+import           Prelude.Compat
 
 type StatusCode = (Char, Char)
 
@@ -67,3 +75,31 @@ add fileName = callProcess "git" ["add", "--", fileName]
 -- TODO: Is this different from getRootDir?
 getCdUp :: IO FilePath
 getCdUp = takeWhile (/= '\0') . stripNewline <$> readProcess "git" ["rev-parse", "--show-cdup"] ""
+
+makeFilesMatchingPrefixes :: IO ([Git.StatusCode] -> IO [FilePath])
+makeFilesMatchingPrefixes =
+    do
+        statusPorcelain <- Git.getStatus
+        rootDir <- Git.getRootDir
+        let rootRelativeFiles =
+                filterM (fmap not . isDirectory) . map (rootDir </>)
+        let decode x =
+                case reads x of
+                [(r, "")] -> r
+                _ -> x
+        let firstMatchingStatus :: [Git.StatusCode] -> Git.StatusLine -> Maybe String
+            firstMatchingStatus statuses =
+                fmap decode . asum . traverse matchStatus statuses
+        let filesMatchingStatuses :: [Git.StatusCode] -> IO [FilePath]
+            filesMatchingStatuses statuses =
+                rootRelativeFiles . mapMaybe (firstMatchingStatus statuses)
+                $ statusPorcelain
+        pure filesMatchingStatuses
+
+matchStatus :: Git.StatusCode -> Git.StatusLine -> Maybe String
+matchStatus code line
+    | line.statusCode == code = Just line.statusArgs
+    | otherwise = Nothing
+
+isDirectory :: FilePath -> IO Bool
+isDirectory x = PosixFiles.isDirectory <$> PosixFiles.getFileStatus x
