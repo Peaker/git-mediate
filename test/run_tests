@@ -4,8 +4,10 @@ set -eux
 
 DIR="$( dirname "$0" )"
 SRC="$( dirname "${DIR}" )"
+STACK_PATH="$( stack path --local-install-root )/bin"
+CABAL_PATH="${SRC}/dist/build/git-mediate"
 
-export PATH="${SRC}/dist/build/git-mediate:$PATH"
+export PATH="${STACK_PATH}:${CABAL_PATH}:$PATH"
 
 echo 'Spaces test'
 "${DIR}"/spaces/test
