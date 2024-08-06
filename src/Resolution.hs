@@ -101,9 +101,9 @@ lineEnding :: String -> LineEnding
 lineEnding x@(_:_) | last x == '\r' = CRLF
 lineEnding _ = LF
 
-lineEndings :: [String] -> LineEnding
-lineEndings [] = Mixed
-lineEndings xs =
+inferLineEndings :: [String] -> LineEnding
+inferLineEndings [] = Mixed
+inferLineEndings xs =
     foldl1 f (map lineEnding xs)
     where
         f Mixed _ = Mixed
@@ -125,7 +125,7 @@ lineBreakFix c
         Just CRLF -> Conflict.setStrings makeCr c
         _ -> c
     where
-        endings = fmap lineEndings c.bodies
+        endings = fmap inferLineEndings c.bodies
         removeCr x@(_:_) | last x == '\r' = init x
         removeCr x = x
         makeCr x@(_:_) | last x == '\r' = x
@@ -140,6 +140,8 @@ resolveContent :: ResolutionOptions -> [Either String Conflict] -> NewContent
 resolveContent opts =
     foldMap go
     where
-        untabified = maybe id untabifyConflict opts.untabify
         go (Left line) = NewContent mempty (unlines [line])
-        go (Right conflict) = formatResolution $ resolveConflict $ lineBreakFix $ untabified conflict
+        go (Right conflict) =
+            formatResolution $ resolveConflict $
+            (if opts.lineEndings then lineBreakFix else id) $
+            maybe id untabifyConflict opts.untabify conflict
