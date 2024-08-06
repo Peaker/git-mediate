@@ -9,6 +9,7 @@ module Opts
 import           Control.Applicative (Alternative(..))
 import qualified Options.Applicative as O
 import           PPDiff (ColorEnable(..))
+import qualified ResolutionOpts as ResOpts
 import           System.Exit (exitSuccess)
 import           Version (versionString)
 
@@ -18,9 +19,9 @@ data Options = Options
     , shouldDumpDiff2 :: Bool
     , shouldUseColor :: Maybe ColorEnable
     , shouldSetConflictStyle :: Bool
-    , untabify :: Maybe Int
     , mergeSpecificFile :: Maybe FilePath
     , diffsContext :: Int
+    , resolution :: ResOpts.ResolutionOptions
     }
 
 data CmdArgs = CmdVersion | CmdOptions Options
@@ -53,12 +54,6 @@ parser =
                   <> O.help "Configure git's global merge.conflictstyle to diff3 if needed"
                 )
             <*> O.optional
-                ( O.option O.auto
-                    ( O.long "untabify" <> O.metavar "TABSIZE"
-                        <> O.help "Convert tabs to the spaces at the tab stops for the given tab size"
-                    )
-                )
-            <*> O.optional
                 ( O.strOption
                     ( O.long "merge-file" <> O.short 'f' <> O.help "Merge a specific file")
                 )
@@ -66,6 +61,7 @@ parser =
                 (O.long "context" <> O.short 'U' <> O.metavar "LINECOUNT" <> O.showDefault <> O.value 3
                     <> O.help "Number of context lines around dumped diffs"
                 )
+            <*> ResOpts.parser
             )
 
 opts :: O.ParserInfo CmdArgs

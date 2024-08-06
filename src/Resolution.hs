@@ -3,7 +3,6 @@
 module Resolution
     ( Result(..)
     , NewContent(..)
-    , Untabify(..)
     , resolveContent
     , fullySuccessful
     ) where
@@ -12,6 +11,7 @@ import           Conflict (Conflict(..), Sides(..))
 import qualified Conflict
 import           Data.Foldable (Foldable(..))
 import           Generic.Data (Generic, Generically(..))
+import           ResolutionOpts
 
 import           Prelude.Compat
 
@@ -80,8 +80,6 @@ data NewContent = NewContent
     deriving Generic
     deriving (Semigroup, Monoid) via Generically NewContent
 
-newtype Untabify = Untabify { mUntabifySize :: Maybe Int }
-
 untabifyStr :: Int -> String -> String
 untabifyStr size =
     go 0
@@ -93,8 +91,8 @@ untabifyStr size =
         go !col (x:rest) = x : go (cyclicInc col) rest
         go _ [] = []
 
-untabify :: Int -> Conflict -> Conflict
-untabify = Conflict.setStrings . untabifyStr
+untabifyConflict :: Int -> Conflict -> Conflict
+untabifyConflict = Conflict.setStrings . untabifyStr
 
 data LineEnding = LF | CRLF | Mixed
     deriving (Eq, Ord)
@@ -138,10 +136,10 @@ formatResolution (NoResolution c) = NewContent (Result 0 0 1) (Conflict.pretty c
 formatResolution (Resolution trivialLines) = NewContent (Result 1 0 0) trivialLines
 formatResolution (PartialResolution newLines) = NewContent (Result 0 1 0) newLines
 
-resolveContent :: Untabify -> [Either String Conflict] -> NewContent
-resolveContent (Untabify mTabSize) =
+resolveContent :: ResolutionOptions -> [Either String Conflict] -> NewContent
+resolveContent opts =
     foldMap go
     where
-        untabified = maybe id untabify mTabSize
+        untabified = maybe id untabifyConflict opts.untabify
         go (Left line) = NewContent mempty (unlines [line])
         go (Right conflict) = formatResolution $ resolveConflict $ lineBreakFix $ untabified conflict

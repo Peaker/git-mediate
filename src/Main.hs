@@ -15,7 +15,7 @@ import qualified Git
 import qualified Opts
 import           Opts (Options(..))
 import           PPDiff (ppDiff, ColorEnable(..))
-import           Resolution (Result(..), NewContent(..), Untabify(..))
+import           Resolution (Result(..), NewContent(..))
 import qualified Resolution
 import           SideDiff (SideDiff(..), getConflictDiffs, getConflictDiff2s)
 import           StrUtils ((</>), ensureNewline)
@@ -121,7 +121,7 @@ resolve :: ColorEnable -> Options -> FilePath -> IO Result
 resolve colorEnable opts fileName =
     do
         resolutions <-
-            Resolution.resolveContent (Untabify opts.untabify)
+            Resolution.resolveContent opts.resolution
             . Conflict.parse
             <$> readFile fileName
         resolutions.result <$ handleFileResult colorEnable opts fileName resolutions

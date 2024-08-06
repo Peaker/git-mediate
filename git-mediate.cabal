@@ -67,6 +67,7 @@ executable git-mediate
                      , Opts
                      , PPDiff
                      , Resolution
+                     , ResolutionOpts
                      , SideDiff
                      , StrUtils
                      , Version
