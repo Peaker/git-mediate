@@ -1,21 +1,33 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
 module ResolutionOpts
-    ( ResolutionOptions(..), parser
+    ( ResolutionOptions(..), parser, isResolving
     ) where
 
+import           Data.Maybe (isJust)
 import qualified Options.Applicative as O
 
 data ResolutionOptions = ResolutionOpts
-    { untabify :: Maybe Int
+    { trivial :: Bool
+    , reduce :: Bool
+    , untabify :: Maybe Int
     , lineEndings :: Bool
     }
 
 parser :: O.Parser ResolutionOptions
 parser =
     ResolutionOpts
-    <$> O.optional
+    <$> noSwitch "trivial" "Disable trivial conflicts resolution"
+    <*> noSwitch "reduce" "Disable conflict reduction"
+    <*> O.optional
         ( O.option O.auto
             ( O.long "untabify" <> O.metavar "TABSIZE"
                 <> O.help "Convert tabs to the spaces at the tab stops for the given tab size"
             )
         )
-    <*> (not <$> O.switch (O.long "no-line-endings" <> O.help "Do not fix line ending characters conflict"))
+    <*> noSwitch "line-endings" "Do not fix line-ending characters conflicts"
+    where
+        noSwitch s t = not <$> O.switch (O.long ("no-" <> s) <> O.help t)
+
+isResolving :: ResolutionOptions -> Bool
+isResolving o = o.trivial || o.reduce || isJust o.untabify || o.lineEndings

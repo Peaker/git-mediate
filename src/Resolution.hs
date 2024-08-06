@@ -9,6 +9,7 @@ module Resolution
 
 import           Conflict (Conflict(..), Sides(..))
 import qualified Conflict
+import           Control.Monad (guard)
 import           Data.Foldable (Foldable(..))
 import           Generic.Data (Generic, Generically(..))
 import           ResolutionOpts
@@ -50,10 +51,10 @@ reduceConflict c
 maybe' :: (a -> b) -> Maybe a -> b -> b
 maybe' f x def = maybe def f x
 
-resolveConflict :: Conflict -> Resolution
-resolveConflict c =
-    maybe' (Resolution . unlines) (resolveGen c.bodies) $
-    maybe' PartialResolution (reduceConflict c) $
+resolveConflict :: ResolutionOptions -> Conflict -> Resolution
+resolveConflict opts c =
+    maybe' (Resolution . unlines) (guard opts.trivial >> resolveGen c.bodies) $
+    maybe' PartialResolution (guard opts.reduce >> reduceConflict c) $
     NoResolution c
 
 lengthOfCommonPrefix :: Eq a => [a] -> [a] -> Int
@@ -142,6 +143,6 @@ resolveContent opts =
     where
         go (Left line) = NewContent mempty (unlines [line])
         go (Right conflict) =
-            formatResolution $ resolveConflict $
+            formatResolution $ resolveConflict opts $
             (if opts.lineEndings then lineBreakFix else id) $
             maybe id untabifyConflict opts.untabify conflict

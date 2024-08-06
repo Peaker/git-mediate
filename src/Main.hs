@@ -17,6 +17,7 @@ import           Opts (Options(..))
 import           PPDiff (ppDiff, ColorEnable(..))
 import           Resolution (Result(..), NewContent(..))
 import qualified Resolution
+import qualified ResolutionOpts
 import           SideDiff (SideDiff(..), getConflictDiffs, getConflictDiff2s)
 import           StrUtils ((</>), ensureNewline)
 import           System.Directory (renameFile, removeFile, getPermissions, setPermissions)
@@ -86,8 +87,11 @@ handleFileResult colorEnable opts fileName res
     | successes == 0 && reductions == 0 =
         do
             putStrLn $ concat
-                [ fileName, ": Failed to resolve any of the "
-                , show failures, " conflicts" ]
+                [ fileName
+                , if ResolutionOpts.isResolving opts.resolution then ": Failed to resolve any of the " else ": "
+                , show failures
+                , " conflicts"
+                ]
             doDump
     | successes == 0 =
         do
