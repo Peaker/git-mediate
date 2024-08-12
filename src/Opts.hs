@@ -8,8 +8,10 @@ module Opts
 
 import           Control.Applicative (Alternative(..))
 import qualified Options.Applicative as O
+import qualified OptUtils
 import           PPDiff (ColorEnable(..))
 import qualified ResolutionOpts as ResOpts
+import           System.Environment (lookupEnv)
 import           System.Exit (exitSuccess)
 import           Version (versionString)
 
@@ -24,8 +26,8 @@ data Options = Options
     , resolution :: ResOpts.ResolutionOptions
     }
 
-optionsParser :: O.Parser Options
-optionsParser =
+optionsParser :: OptUtils.EnvOpts -> O.Parser Options
+optionsParser envOpts =
     Options
     <$> O.switch
         ( O.long "editor" <> O.short 'e'
@@ -52,7 +54,7 @@ optionsParser =
         (O.long "context" <> O.short 'U' <> O.metavar "LINECOUNT" <> O.showDefault <> O.value 3
             <> O.help "Number of context lines around dumped diffs"
         )
-    <*> ResOpts.parser
+    <*> ResOpts.parser envOpts
     where
         colorParser =
             O.flag' (Just EnableColor)
@@ -63,14 +65,14 @@ optionsParser =
 
 data CmdArgs = CmdVersion | CmdOptions Options
 
-parser :: O.Parser CmdArgs
-parser =
+parser :: OptUtils.EnvOpts -> O.Parser CmdArgs
+parser envOpts =
     O.flag' CmdVersion (O.long "version" <> O.help "Print the version and quit")
-    <|> CmdOptions <$> optionsParser
+    <|> CmdOptions <$> optionsParser envOpts
 
-opts :: O.ParserInfo CmdArgs
-opts =
-    O.info (O.helper <*> parser) $
+opts :: OptUtils.EnvOpts -> O.ParserInfo CmdArgs
+opts envOpts =
+    O.info (O.helper <*> parser envOpts) $
     O.fullDesc
     <> O.progDesc
        "Resolve any git conflicts that have become trivial by editing operations.\n\
@@ -79,7 +81,8 @@ opts =
 
 getOpts :: IO Options
 getOpts =
-    O.execParser opts
+    lookupEnv "GIT_MEDIATE_OPTIONS"
+    >>= O.execParser . opts . foldMap OptUtils.parseEnv
     >>= \case
     CmdVersion ->
         do

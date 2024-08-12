@@ -6,6 +6,7 @@ module ResolutionOpts
 
 import           Data.Maybe (isJust)
 import qualified Options.Applicative as O
+import qualified OptUtils
 
 data ResolutionOptions = ResolutionOpts
     { trivial :: Bool
@@ -15,21 +16,19 @@ data ResolutionOptions = ResolutionOpts
     , addedLines :: Bool
     }
 
-parser :: O.Parser ResolutionOptions
-parser =
+parser :: OptUtils.EnvOpts -> O.Parser ResolutionOptions
+parser envOpts =
     ResolutionOpts
-    <$> noSwitch "trivial" "Disable trivial conflicts resolution"
-    <*> noSwitch "reduce" "Disable conflict reduction"
+    <$> OptUtils.envSwitch envOpts "trivial" True "trivial conflicts resolution"
+    <*> OptUtils.envSwitch envOpts "reduce" True "conflict reduction"
     <*> O.optional
         ( O.option O.auto
             ( O.long "untabify" <> O.metavar "TABSIZE"
                 <> O.help "Convert tabs to the spaces at the tab stops for the given tab size"
             )
         )
-    <*> noSwitch "line-endings" "Do not fix line-ending characters conflicts"
-    <*> O.switch (O.long "added-lines" <> O.help "EXPERIMENTAL: Resolve added lines")
-    where
-        noSwitch s t = not <$> O.switch (O.long ("no-" <> s) <> O.help t)
+    <*> OptUtils.envSwitch envOpts "line-endings" True "line-ending characters conflict resolution"
+    <*> OptUtils.envSwitch envOpts "added-lines" False "added lines resolution (EXPERIMENTAL)"
 
 isResolving :: ResolutionOptions -> Bool
 isResolving o = o.trivial || o.reduce || isJust o.untabify || o.lineEndings || o.addedLines
