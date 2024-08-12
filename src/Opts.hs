@@ -11,7 +11,6 @@ import qualified Options.Applicative as O
 import qualified OptUtils
 import           PPDiff (ColorEnable(..))
 import qualified ResolutionOpts as ResOpts
-import           System.Environment (lookupEnv)
 import           System.Exit (exitSuccess)
 import           Version (versionString)
 
@@ -81,8 +80,8 @@ opts envOpts =
 
 getOpts :: IO Options
 getOpts =
-    lookupEnv "GIT_MEDIATE_OPTIONS"
-    >>= O.execParser . opts . foldMap OptUtils.parseEnv
+    OptUtils.readEnv "GIT_MEDIATE_OPTIONS"
+    >>= O.execParser . opts
     >>= \case
     CmdVersion ->
         do

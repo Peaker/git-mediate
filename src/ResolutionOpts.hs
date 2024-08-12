@@ -21,12 +21,9 @@ parser envOpts =
     ResolutionOpts
     <$> OptUtils.envSwitch envOpts "trivial" True "trivial conflicts resolution"
     <*> OptUtils.envSwitch envOpts "reduce" True "conflict reduction"
-    <*> O.optional
-        ( O.option O.auto
-            ( O.long "untabify" <> O.metavar "TABSIZE"
-                <> O.help "Convert tabs to the spaces at the tab stops for the given tab size"
-            )
-        )
+    <*> OptUtils.envOption envOpts "untabify" "TABSIZE"
+        "Convert tabs to the spaces at the tab stops for the given tab size"
+        (\x -> "Disable converting tabs to " <> show x <> " spaces at the tab stops")
     <*> OptUtils.envSwitch envOpts "line-endings" True "line-ending characters conflict resolution"
     <*> OptUtils.envSwitch envOpts "added-lines" False "added lines resolution (EXPERIMENTAL)"
 
