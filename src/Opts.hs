@@ -24,45 +24,49 @@ data Options = Options
     , resolution :: ResOpts.ResolutionOptions
     }
 
+optionsParser :: O.Parser Options
+optionsParser =
+    Options
+    <$> O.switch
+        ( O.long "editor" <> O.short 'e'
+            <> O.help "Execute $EDITOR for each conflicted file that remains conflicted"
+        )
+    <*> O.switch
+        ( O.long "diff" <> O.short 'd'
+            <> O.help "Dump the left/right diffs from base in each conflict remaining"
+        )
+    <*> O.switch
+        ( O.long "diff2" <> O.short '2'
+            <> O.help "Dump the diff between left and right in each conflict remaining"
+        )
+    <*> colorParser
+    <*> O.switch
+        ( O.long "style" <> O.short 's'
+            <> O.help "Configure git's global merge.conflictstyle to diff3 if needed"
+        )
+    <*> O.optional
+        ( O.strOption
+            ( O.long "merge-file" <> O.short 'f' <> O.help "Merge a specific file")
+        )
+    <*> O.option O.auto
+        (O.long "context" <> O.short 'U' <> O.metavar "LINECOUNT" <> O.showDefault <> O.value 3
+            <> O.help "Number of context lines around dumped diffs"
+        )
+    <*> ResOpts.parser
+    where
+        colorParser =
+            O.flag' (Just EnableColor)
+                (O.long "color" <> O.short 'c' <> O.help "Enable color")
+            <|> O.flag' (Just DisableColor)
+                (O.long "no-color" <> O.short 'C' <> O.help "Disable color")
+            <|> pure Nothing
+
 data CmdArgs = CmdVersion | CmdOptions Options
 
 parser :: O.Parser CmdArgs
 parser =
     O.flag' CmdVersion (O.long "version" <> O.help "Print the version and quit")
-        <|> CmdOptions
-        <$> ( Options
-            <$> O.switch
-                ( O.long "editor" <> O.short 'e'
-                  <> O.help "Execute $EDITOR for each conflicted file that remains conflicted"
-                )
-            <*> O.switch
-                ( O.long "diff" <> O.short 'd'
-                  <> O.help "Dump the left/right diffs from base in each conflict remaining"
-                )
-            <*> O.switch
-                ( O.long "diff2" <> O.short '2'
-                  <> O.help "Dump the diff between left and right in each conflict remaining"
-                )
-            <*> ( O.flag' (Just EnableColor)
-                  (O.long "color" <> O.short 'c' <> O.help "Enable color")
-                  <|> O.flag' (Just DisableColor)
-                      (O.long "no-color" <> O.short 'C' <> O.help "Disable color")
-                  <|> pure Nothing
-                )
-            <*> O.switch
-                ( O.long "style" <> O.short 's'
-                  <> O.help "Configure git's global merge.conflictstyle to diff3 if needed"
-                )
-            <*> O.optional
-                ( O.strOption
-                    ( O.long "merge-file" <> O.short 'f' <> O.help "Merge a specific file")
-                )
-            <*> O.option O.auto
-                (O.long "context" <> O.short 'U' <> O.metavar "LINECOUNT" <> O.showDefault <> O.value 3
-                    <> O.help "Number of context lines around dumped diffs"
-                )
-            <*> ResOpts.parser
-            )
+    <|> CmdOptions <$> optionsParser
 
 opts :: O.ParserInfo CmdArgs
 opts =
