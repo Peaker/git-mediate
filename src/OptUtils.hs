@@ -41,7 +41,7 @@ parseEnv (other:rest) = ([other], mempty) <> parseEnv rest
 
 envSwitch :: EnvOpts -> String -> Bool -> String -> O.Parser Bool
 envSwitch envOpts name def desc =
-    (== def) <$> O.switch (O.long flag <> O.help help)
+    (/= (def /= otherInEnv)) <$> O.switch (O.long flag <> O.help help)
     where
         flag = if otherInEnv then defaultMode else otherMode
         help =
