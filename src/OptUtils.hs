@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedRecordDot, LambdaCase #-}
 
 module OptUtils
-    ( EnvOpts, readEnv, envSwitch, envOption
+    ( EnvOpts, readEnv, envSwitch, envOptional
     ) where
 
 import           Control.Monad (unless)
@@ -56,8 +56,8 @@ envSwitch envOpts name def desc =
 overrideHelp :: EnvOpts -> String -> String
 overrideHelp envOpts val = " (override \"--" <> val <> "\" from " <> envOpts.envVarName <> ")"
 
-envOption :: (Read a, Show a) => EnvOpts -> String -> String -> String -> (a -> String) -> O.Parser (Maybe a)
-envOption envOpts name valDesc help disableHelp =
+envOptional :: (Read a, Show a) => EnvOpts -> String -> String -> String -> (a -> String) -> O.Parser (Maybe a)
+envOptional envOpts name valDesc help disableHelp =
     case M.lookup name envOpts.options >>= readMaybe of
     Just val ->
         def oh O.<|> (f <$> O.switch (O.long ("no-" <> name) <> O.help h))
@@ -68,4 +68,4 @@ envOption envOpts name valDesc help disableHelp =
             f False = Just val
     Nothing -> def ""
     where
-        def suffix = Just <$> O.option O.auto (O.long name <> O.metavar valDesc <> O.help (help <> suffix))
+        def suffix = O.optional (O.option O.auto (O.long name <> O.metavar valDesc <> O.help (help <> suffix)))
