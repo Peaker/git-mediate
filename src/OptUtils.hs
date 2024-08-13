@@ -1,9 +1,10 @@
 {-# LANGUAGE OverloadedRecordDot, LambdaCase #-}
 
 module OptUtils
-    ( EnvOpts, readEnv, envSwitch, envOptional
+    ( EnvOpts, readEnv, envSwitch, envOptional, envOption
     ) where
 
+import           Control.Applicative ((<|>))
 import           Control.Monad (unless)
 import qualified Data.Map as M
 import qualified Data.Set as S
@@ -60,7 +61,7 @@ envOptional :: (Read a, Show a) => EnvOpts -> String -> String -> String -> (a -
 envOptional envOpts name valDesc help disableHelp =
     case M.lookup name envOpts.options >>= readMaybe of
     Just val ->
-        def oh O.<|> (f <$> O.switch (O.long ("no-" <> name) <> O.help h))
+        def oh <|> f <$> O.switch (O.long ("no-" <> name) <> O.help h)
         where
             oh = overrideHelp envOpts (name <> " " <> show val)
             h = disableHelp val <> oh
@@ -69,3 +70,15 @@ envOptional envOpts name valDesc help disableHelp =
     Nothing -> def ""
     where
         def suffix = O.optional (O.option O.auto (O.long name <> O.metavar valDesc <> O.help (help <> suffix)))
+
+envOption :: (Read a, Show a) => EnvOpts -> String -> Maybe Char -> O.Mod O.OptionFields a -> O.Parser a
+envOption envOpts name shortName mods =
+    O.option O.auto
+    (O.long name <> foldMap O.short shortName <> mods <> opts)
+    where
+        opts = foldMap (envOptionFromEnv envOpts) (l name <|> (shortName >>= l . pure))
+        l n = M.lookup n envOpts.options >>= readMaybe
+
+envOptionFromEnv :: Show a => EnvOpts -> a -> O.Mod O.OptionFields a
+envOptionFromEnv envOpts val =
+    O.value val <> O.showDefaultWith (\x -> show x <> ", from " <> envOpts.envVarName)
