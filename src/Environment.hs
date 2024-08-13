@@ -68,6 +68,7 @@ openEditor opts path lineNo
             let cmdOpts =
                     case editor of
                     "code" -> ["--goto", path <> ":" <> show lineNo]
+                    "xed" -> ["-l", show lineNo, path]
                     _ -> ["+" <> show lineNo, path]
             callProcess editor cmdOpts
     | otherwise = pure ()
