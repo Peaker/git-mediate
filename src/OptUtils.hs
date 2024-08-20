@@ -14,30 +14,40 @@ import           Text.Read.Compat (readMaybe)
 
 data EnvOpts = EnvOpts
     { envVarName :: String
-    , flags :: S.Set String
+    , content :: EnvContent
+    }
+
+data EnvContent = EnvContent
+    { flags :: S.Set String
     , options :: M.Map String String
     }
+
+instance Semigroup EnvContent where
+    EnvContent f0 o0 <> EnvContent f1 o1 = EnvContent (f0 <> f1) (o0 <> o1)
+
+instance Monoid EnvContent where
+    mempty = EnvContent mempty mempty
 
 readEnv :: String -> IO EnvOpts
 readEnv name =
     lookupEnv name >>=
     \case
-    Nothing -> pure (EnvOpts name mempty mempty)
+    Nothing -> pure (EnvOpts name mempty)
     Just opts ->
-        EnvOpts name f o <$
+        EnvOpts name c <$
         unless (null r) (putStrLn ("Warning: unrecognized options in " <> name <> ": " <> unwords r <> "\n"))
         where
-            (r, (f, o)) = parseEnv (words opts)
+            (r, c) = parseEnv (words opts)
 
-parseEnv :: [String] -> ([String], (S.Set String, M.Map String String))
+parseEnv :: [String] -> ([String], EnvContent)
 parseEnv [] = mempty
 parseEnv (('-':'-':flag):rest) =
     case rest of
     [] -> parseFlag
     ('-':'-':_):_ -> parseFlag
-    val:rest' -> (mempty, (mempty, M.singleton flag val)) <> parseEnv rest'
+    val:rest' -> (mempty, mempty{options = M.singleton flag val}) <> parseEnv rest'
     where
-        parseFlag = (mempty, (S.singleton flag, mempty)) <> parseEnv rest
+        parseFlag = (mempty, mempty{flags = S.singleton flag}) <> parseEnv rest
 parseEnv (other:rest) = ([other], mempty) <> parseEnv rest
 
 envSwitch :: EnvOpts -> String -> Bool -> String -> O.Parser Bool
@@ -52,14 +62,14 @@ envSwitch envOpts name def desc =
         curDef = def /= otherInEnv
         noFlag = "no-" <> name
         (defaultMode, otherMode) = if def then (name, noFlag) else (noFlag, name)
-        otherInEnv = S.member otherMode envOpts.flags
+        otherInEnv = S.member otherMode envOpts.content.flags
 
 overrideHelp :: EnvOpts -> String -> String
 overrideHelp envOpts val = " (override \"--" <> val <> "\" from " <> envOpts.envVarName <> ")"
 
 envOptional :: (Read a, Show a) => EnvOpts -> String -> String -> String -> (a -> String) -> O.Parser (Maybe a)
 envOptional envOpts name valDesc help disableHelp =
-    case M.lookup name envOpts.options >>= readMaybe of
+    case M.lookup name envOpts.content.options >>= readMaybe of
     Just val ->
         def oh <|> f <$> O.switch (O.long ("no-" <> name) <> O.help h)
         where
@@ -77,7 +87,7 @@ envOption envOpts name shortName mods =
     (O.long name <> foldMap O.short shortName <> mods <> opts)
     where
         opts = foldMap (envOptionFromEnv envOpts) (l name <|> (shortName >>= l . pure))
-        l n = M.lookup n envOpts.options >>= readMaybe
+        l n = M.lookup n envOpts.content.options >>= readMaybe
 
 envOptionFromEnv :: Show a => EnvOpts -> a -> O.Mod O.OptionFields a
 envOptionFromEnv envOpts val =
