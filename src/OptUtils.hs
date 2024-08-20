@@ -20,13 +20,14 @@ data EnvOpts = EnvOpts
 data EnvContent = EnvContent
     { flags :: S.Set String
     , options :: M.Map String String
+    , remainder :: [String]
     }
 
 instance Semigroup EnvContent where
-    EnvContent f0 o0 <> EnvContent f1 o1 = EnvContent (f0 <> f1) (o0 <> o1)
+    EnvContent f0 o0 r0 <> EnvContent f1 o1 r1 = EnvContent (f0 <> f1) (o0 <> o1) (r0 <> r1)
 
 instance Monoid EnvContent where
-    mempty = EnvContent mempty mempty
+    mempty = EnvContent mempty mempty mempty
 
 readEnv :: String -> IO EnvOpts
 readEnv name =
@@ -35,20 +36,21 @@ readEnv name =
     Nothing -> pure (EnvOpts name mempty)
     Just opts ->
         EnvOpts name c <$
-        unless (null r) (putStrLn ("Warning: unrecognized options in " <> name <> ": " <> unwords r <> "\n"))
+        unless (null c.remainder)
+        (putStrLn ("Warning: unrecognized options in " <> name <> ": " <> unwords c.remainder <> "\n"))
         where
-            (r, c) = parseEnv (words opts)
+            c = parseEnv (words opts)
 
-parseEnv :: [String] -> ([String], EnvContent)
+parseEnv :: [String] -> EnvContent
 parseEnv [] = mempty
 parseEnv (('-':'-':flag):rest) =
     case rest of
     [] -> parseFlag
     ('-':'-':_):_ -> parseFlag
-    val:rest' -> (mempty, mempty{options = M.singleton flag val}) <> parseEnv rest'
+    val:rest' -> mempty{options = M.singleton flag val} <> parseEnv rest'
     where
-        parseFlag = (mempty, mempty{flags = S.singleton flag}) <> parseEnv rest
-parseEnv (other:rest) = ([other], mempty) <> parseEnv rest
+        parseFlag = mempty{flags = S.singleton flag} <> parseEnv rest
+parseEnv (other:rest) = mempty{remainder = [other]} <> parseEnv rest
 
 envSwitch :: EnvOpts -> String -> Bool -> String -> O.Parser Bool
 envSwitch envOpts name def desc =
