@@ -43,14 +43,18 @@ readEnv name =
 
 parseEnv :: [String] -> EnvContent
 parseEnv [] = mempty
-parseEnv (('-':'-':flag):rest) =
+parseEnv (('-':'-':flag@(_:_)):rest) = parseEnvFlag flag rest
+parseEnv (['-',flag]:rest) = parseEnvFlag [flag] rest
+parseEnv (other:rest) = mempty{remainder = [other]} <> parseEnv rest
+
+parseEnvFlag :: String -> [String] -> EnvContent
+parseEnvFlag flag rest =
     case rest of
-    [] -> parseFlag
-    ('-':'-':_):_ -> parseFlag
+    [] -> flagRes
+    ('-':_):_ -> flagRes <> parseEnv rest
     val:rest' -> mempty{options = M.singleton flag val} <> parseEnv rest'
     where
-        parseFlag = mempty{flags = S.singleton flag} <> parseEnv rest
-parseEnv (other:rest) = mempty{remainder = [other]} <> parseEnv rest
+        flagRes = mempty{flags = S.singleton flag}
 
 envSwitch :: EnvOpts -> String -> Bool -> String -> O.Parser Bool
 envSwitch envOpts name def desc =
