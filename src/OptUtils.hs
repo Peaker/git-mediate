@@ -63,6 +63,10 @@ parseEnvFlag flag rest =
     where
         flagRes = mempty{flags = S.singleton flag}
 
+-- | A boolean flag which may be initialized by an environment variable.
+--
+-- If the flag is present in the environment,
+-- the corresponding --no-<name> or --<name> flag will be available to override it.
 envSwitch :: EnvOpts -> String -> Bool -> String -> O.Parser Bool
 envSwitch envOpts name def desc =
     (/= (def /= otherInEnv)) <$> O.switch (O.long flag <> O.help help)
@@ -80,6 +84,10 @@ envSwitch envOpts name def desc =
 overrideHelp :: EnvOpts -> String -> String
 overrideHelp envOpts val = " (override \"--" <> val <> "\" from " <> envOpts.envVarName <> ")"
 
+-- | An optional value which may be initialized by an environment variable.
+--
+-- If the flag is present in the environment,
+-- a corresponding --no-<name> flag will be available to disable it.
 envOptional :: (Read a, Show a) => EnvOpts -> String -> String -> String -> (a -> String) -> O.Parser (Maybe a)
 envOptional envOpts name valDesc help disableHelp =
     case M.lookup name envOpts.content.options >>= readMaybe of
@@ -94,6 +102,9 @@ envOptional envOpts name valDesc help disableHelp =
     where
         def suffix = O.optional (O.option O.auto (O.long name <> O.metavar valDesc <> O.help (help <> suffix)))
 
+-- | An option with a default value which may be initialized by an environment variable.
+--
+-- (the default value should be specified in the provided @O.Mod@ argument)
 envOption :: (Read a, Show a) => EnvOpts -> String -> Maybe Char -> O.Mod O.OptionFields a -> O.Parser a
 envOption envOpts name shortName mods =
     O.option O.auto
