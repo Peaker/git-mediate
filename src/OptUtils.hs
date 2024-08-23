@@ -20,11 +20,16 @@ data EnvOpts = EnvOpts
 data EnvContent = EnvContent
     { flags :: S.Set String
     , options :: M.Map String String
-    , remainder :: [String]
+    , errors :: [String]
     }
 
 instance Semigroup EnvContent where
-    EnvContent f0 o0 r0 <> EnvContent f1 o1 r1 = EnvContent (f0 <> f1) (o0 <> o1) (r0 <> r1)
+    EnvContent f0 o0 e0 <> EnvContent f1 o1 e1 =
+        EnvContent (f0 <> f1) (o0 <> o1)
+        ( e0 <> e1
+            <> (("Duplicate flag: " <>) <$> S.toList (S.intersection f0 f1))
+            <> (("Duplicate option: " <>) <$> M.keys (M.intersection o0 o1))
+        )
 
 instance Monoid EnvContent where
     mempty = EnvContent mempty mempty mempty
@@ -36,8 +41,10 @@ readEnv name =
     Nothing -> pure (EnvOpts name mempty)
     Just opts ->
         EnvOpts name c <$
-        unless (null c.remainder)
-        (putStrLn ("Warning: unrecognized options in " <> name <> ": " <> unwords c.remainder <> "\n"))
+        unless (null c.errors)
+        (putStrLn (unlines (
+            ("Warning: unrecognized options in " <> name <> ":")
+                : (("  * " <>) <$> c.errors))))
         where
             c = parseEnv (words opts)
 
@@ -45,7 +52,7 @@ parseEnv :: [String] -> EnvContent
 parseEnv [] = mempty
 parseEnv (('-':'-':flag@(_:_)):rest) = parseEnvFlag flag rest
 parseEnv (['-',flag]:rest) = parseEnvFlag [flag] rest
-parseEnv (other:rest) = mempty{remainder = [other]} <> parseEnv rest
+parseEnv (other:rest) = mempty{errors = ["Unknown argument: " <> other]} <> parseEnv rest
 
 parseEnvFlag :: String -> [String] -> EnvContent
 parseEnvFlag flag rest =
