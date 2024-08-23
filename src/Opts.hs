@@ -2,7 +2,7 @@
 -- | Option parser
 
 module Opts
-    ( Options(..)
+    ( Options(..), EnvOptions(..)
     , getOpts
     ) where
 
@@ -21,7 +21,12 @@ data Options = Options
     , shouldUseColor :: Maybe ColorEnable
     , shouldSetConflictStyle :: Bool
     , mergeSpecificFile :: Maybe FilePath
-    , diffsContext :: Int
+    , envOptions :: EnvOptions
+    }
+
+-- Options which can be defaulted from the GIT_MEDIATE_OPTIONS environment variable
+data EnvOptions = EnvOptions
+    { diffsContext :: Int
     , resolution :: ResOpts.ResolutionOptions
     }
 
@@ -49,11 +54,7 @@ optionsParser envOpts =
         ( O.strOption
             ( O.long "merge-file" <> O.short 'f' <> O.help "Merge a specific file")
         )
-    <*> OptUtils.envOption envOpts "context" (Just 'U')
-        ( O.metavar "LINECOUNT" <> O.showDefault <> O.value 3
-            <> O.help "Number of context lines around dumped diffs"
-        )
-    <*> ResOpts.parser envOpts
+    <*> envOptsParser envOpts
     where
         colorParser =
             O.flag' (Just EnableColor)
@@ -61,6 +62,15 @@ optionsParser envOpts =
             <|> O.flag' (Just DisableColor)
                 (O.long "no-color" <> O.short 'C' <> O.help "Disable color")
             <|> pure Nothing
+
+envOptsParser :: OptUtils.EnvOpts -> O.Parser EnvOptions
+envOptsParser envOpts =
+    EnvOptions
+    <$> OptUtils.envOption envOpts "context" (Just 'U')
+        ( O.metavar "LINECOUNT" <> O.showDefault <> O.value 3
+            <> O.help "Number of context lines around dumped diffs"
+        )
+    <*> ResOpts.parser envOpts
 
 data CmdArgs = CmdVersion | CmdOptions Options
 

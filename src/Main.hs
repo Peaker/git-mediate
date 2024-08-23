@@ -53,7 +53,7 @@ dumpDiffs colorEnable opts filePath count (idx, conflict) =
             do
                 putStrLn $ concat
                     [filePath, ":", show d.marker.lineNo, ":Diff", show d.side, ": ", d.marker.content]
-                putStr $ unlines $ map (ppDiff colorEnable) (trimDiff opts.diffsContext d.diff)
+                putStr $ unlines $ map (ppDiff colorEnable) (trimDiff opts.envOptions.diffsContext d.diff)
         dumpDiff2 (markerA, markerB, d) =
             do
                 putStrLn $ concat [filePath, ":", show markerA.lineNo, " <->", markerA.content]
@@ -88,7 +88,8 @@ handleFileResult colorEnable opts fileName res
         do
             putStrLn $ concat
                 [ fileName
-                , if ResolutionOpts.isResolving opts.resolution then ": Failed to resolve any of the " else ": "
+                , if ResolutionOpts.isResolving opts.envOptions.resolution
+                        then ": Failed to resolve any of the " else ": "
                 , show failures
                 , " conflicts"
                 ]
@@ -125,7 +126,7 @@ resolve :: ColorEnable -> Options -> FilePath -> IO Result
 resolve colorEnable opts fileName =
     do
         resolutions <-
-            Resolution.resolveContent opts.resolution
+            Resolution.resolveContent opts.envOptions.resolution
             . Conflict.parse
             <$> readFile fileName
         resolutions.result <$ handleFileResult colorEnable opts fileName resolutions
