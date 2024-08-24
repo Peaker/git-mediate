@@ -30,7 +30,7 @@ data EnvOptions = EnvOptions
     , resolution :: ResOpts.ResolutionOptions
     }
 
-optionsParser :: OptUtils.EnvOpts -> O.Parser Options
+optionsParser :: O.Parser EnvOptions -> O.Parser Options
 optionsParser envOpts =
     Options
     <$> O.switch
@@ -54,7 +54,7 @@ optionsParser envOpts =
         ( O.strOption
             ( O.long "merge-file" <> O.short 'f' <> O.help "Merge a specific file")
         )
-    <*> envOptsParser envOpts
+    <*> envOpts
     where
         colorParser =
             O.flag' (Just EnableColor)
@@ -74,12 +74,12 @@ envOptsParser envOpts =
 
 data CmdArgs = CmdVersion | CmdOptions Options
 
-parser :: OptUtils.EnvOpts -> O.Parser CmdArgs
+parser :: O.Parser EnvOptions -> O.Parser CmdArgs
 parser envOpts =
     O.flag' CmdVersion (O.long "version" <> O.help "Print the version and quit")
     <|> CmdOptions <$> optionsParser envOpts
 
-opts :: OptUtils.EnvOpts -> O.ParserInfo CmdArgs
+opts :: O.Parser EnvOptions -> O.ParserInfo CmdArgs
 opts envOpts =
     O.info (O.helper <*> parser envOpts) $
     O.fullDesc
@@ -90,7 +90,7 @@ opts envOpts =
 
 getOpts :: IO Options
 getOpts =
-    OptUtils.readEnv "GIT_MEDIATE_OPTIONS"
+    OptUtils.parseEnvOptions "GIT_MEDIATE_OPTIONS" envOptsParser
     >>= O.execParser . opts
     >>= \case
     CmdVersion ->

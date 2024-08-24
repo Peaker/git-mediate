@@ -1,7 +1,7 @@
-{-# LANGUAGE OverloadedRecordDot, LambdaCase #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 module OptUtils
-    ( EnvOpts, readEnv, envSwitch, envOptional, envOption
+    ( EnvOpts, parseEnvOptions, envSwitch, envOptional, envOption
     ) where
 
 import           Control.Applicative ((<|>))
@@ -34,19 +34,15 @@ instance Semigroup EnvContent where
 instance Monoid EnvContent where
     mempty = EnvContent mempty mempty mempty
 
-readEnv :: String -> IO EnvOpts
-readEnv name =
-    lookupEnv name >>=
-    \case
-    Nothing -> pure (EnvOpts name mempty)
-    Just opts ->
-        EnvOpts name c <$
-        unless (null c.errors)
-        (putStrLn (unlines (
-            ("Warning: unrecognized options in " <> name <> ":")
-                : (("  * " <>) <$> c.errors))))
-        where
-            c = parseEnv (words opts)
+parseEnvOptions :: String -> (EnvOpts -> O.Parser a) -> IO (O.Parser a)
+parseEnvOptions name parser =
+    do
+        envOpts <- foldMap (parseEnv . words) <$> lookupEnv name
+        unless (null envOpts.errors)
+            (putStrLn (unlines (
+                ("Warning: unrecognized options in " <> name <> ":")
+                    : (("  * " <>) <$> envOpts.errors))))
+        pure (parser (EnvOpts name envOpts))
 
 parseEnv :: [String] -> EnvContent
 parseEnv [] = mempty
