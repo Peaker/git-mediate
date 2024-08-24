@@ -8,11 +8,11 @@ import           Control.Applicative ((<|>))
 import           Control.Monad ((>=>), guard, unless)
 import           Control.Monad.Reader
 import           Control.Monad.State
+import           Data.Foldable (traverse_)
 import           Data.Functor.Compose (Compose(..))
 import qualified Data.Map as M
 import           Data.Maybe (catMaybes)
 import qualified Data.Set as S
-import           Data.Foldable (traverse_)
 import qualified Options.Applicative as O
 import           System.Environment (lookupEnv)
 import           Text.Read.Compat (readMaybe)
