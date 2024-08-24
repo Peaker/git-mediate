@@ -69,13 +69,13 @@ parseEnvFlag flag rest =
 -- the corresponding --no-<name> or --<name> flag will be available to override it.
 envSwitch :: EnvOpts -> String -> Bool -> String -> O.Parser Bool
 envSwitch envOpts name def desc =
-    (/= (def /= otherInEnv)) <$> O.switch (O.long flag <> O.help help)
+    (/= curDef) <$> O.switch (O.long flag <> O.help help)
     where
         flag = if otherInEnv then defaultMode else otherMode
-        help =
-            (if curDef then "Disable " else "Enable ")
-            <> desc
-            <> if otherInEnv then overrideHelp envOpts otherMode else ""
+        help = actionHelp <> " " <> desc <> if otherInEnv then overrideHelp envOpts otherMode else ""
+        actionHelp
+            | curDef = "Disable"
+            | otherwise = "Enable"
         curDef = def /= otherInEnv
         noFlag = "no-" <> name
         (defaultMode, otherMode) = if def then (name, noFlag) else (noFlag, name)
