@@ -98,7 +98,7 @@ envOptional envOpts name valDesc help disableHelp =
     case M.lookup name envOpts.content.options >>= readMaybe of
     Just val ->
         O.optional (
-            envOption envOpts name Nothing (commonMods <> O.value val <> O.showDefaultWith (defFromEnvHelp envOpts))
+            envOption envOpts name Nothing (commonMods <> envOptionFromEnv envOpts val)
         ) <|> f <$> O.switch (O.long ("no-" <> name) <> O.help h)
         where
             h = disableHelp val <> overrideHelp envOpts (name <> " " <> show val)
@@ -121,7 +121,4 @@ envOption envOpts name shortName mods =
 
 envOptionFromEnv :: Show a => EnvOpts -> a -> O.Mod O.OptionFields a
 envOptionFromEnv envOpts val =
-    O.value val <> O.showDefaultWith (defFromEnvHelp envOpts)
-
-defFromEnvHelp :: Show a => EnvOpts -> a -> String
-defFromEnvHelp envOpts x = show x <> ", from " <> envOpts.envVarName
+    O.value val <> O.showDefaultWith (\x -> show x <> ", from " <> envOpts.envVarName)
