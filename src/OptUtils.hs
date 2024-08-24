@@ -78,7 +78,7 @@ envSwitch envOpts name def desc =
         actionHelp
             | curDef = "Disable"
             | otherwise = "Enable"
-        extraHelp = guard otherInEnv >> overrideHelp envOpts (name <> " " <> show def)
+        extraHelp = guard otherInEnv >> overrideHelp envOpts otherMode
         curDef = def /= otherInEnv
         noFlag = "no-" <> name
         (defaultMode, otherMode)
