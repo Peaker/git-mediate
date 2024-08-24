@@ -5,7 +5,7 @@ module OptUtils
     ) where
 
 import           Control.Applicative ((<|>))
-import           Control.Monad (unless)
+import           Control.Monad (guard, unless)
 import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Options.Applicative as O
@@ -71,14 +71,19 @@ envSwitch :: EnvOpts -> String -> Bool -> String -> O.Parser Bool
 envSwitch envOpts name def desc =
     (/= curDef) <$> O.switch (O.long flag <> O.help help)
     where
-        flag = if otherInEnv then defaultMode else otherMode
-        help = actionHelp <> " " <> desc <> if otherInEnv then overrideHelp envOpts otherMode else ""
+        flag
+            | otherInEnv = defaultMode
+            | otherwise = otherMode
+        help = actionHelp <> " " <> desc <> extraHelp
         actionHelp
             | curDef = "Disable"
             | otherwise = "Enable"
+        extraHelp = guard otherInEnv >> overrideHelp envOpts (name <> " " <> show def)
         curDef = def /= otherInEnv
         noFlag = "no-" <> name
-        (defaultMode, otherMode) = if def then (name, noFlag) else (noFlag, name)
+        (defaultMode, otherMode)
+            | def = (name, noFlag)
+            | otherwise = (noFlag, name)
         otherInEnv = S.member otherMode envOpts.content.flags
 
 overrideHelp :: EnvOpts -> String -> String
