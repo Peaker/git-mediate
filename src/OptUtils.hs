@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 
 module OptUtils
-    ( EnvOpts, parseEnvOptions, envSwitch, envOptional, envOption
+    ( Parser, parseEnvOptions, envSwitch, envOptional, envOption
     ) where
 
 import           Control.Applicative ((<|>))
@@ -11,6 +11,8 @@ import qualified Data.Set as S
 import qualified Options.Applicative as O
 import           System.Environment (lookupEnv)
 import           Text.Read.Compat (readMaybe)
+
+type Parser a = EnvOpts -> O.Parser a
 
 data EnvOpts = EnvOpts
     { envVarName :: String
@@ -34,7 +36,7 @@ instance Semigroup EnvContent where
 instance Monoid EnvContent where
     mempty = EnvContent mempty mempty mempty
 
-parseEnvOptions :: String -> (EnvOpts -> O.Parser a) -> IO (O.Parser a)
+parseEnvOptions :: String -> Parser a -> IO (O.Parser a)
 parseEnvOptions name parser =
     do
         envOpts <- foldMap (parseEnv . words) <$> lookupEnv name

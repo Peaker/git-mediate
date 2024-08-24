@@ -5,7 +5,6 @@ module ResolutionOpts
     ) where
 
 import           Data.Maybe (isJust)
-import qualified Options.Applicative as O
 import qualified OptUtils
 
 data ResolutionOptions = ResolutionOpts
@@ -16,7 +15,7 @@ data ResolutionOptions = ResolutionOpts
     , addedLines :: Bool
     }
 
-parser :: OptUtils.EnvOpts -> O.Parser ResolutionOptions
+parser :: OptUtils.Parser ResolutionOptions
 parser envOpts =
     ResolutionOpts
     <$> OptUtils.envSwitch envOpts "trivial" True "trivial conflicts resolution"

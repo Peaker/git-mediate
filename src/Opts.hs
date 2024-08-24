@@ -63,7 +63,7 @@ optionsParser envOpts =
                 (O.long "no-color" <> O.short 'C' <> O.help "Disable color")
             <|> pure Nothing
 
-envOptsParser :: OptUtils.EnvOpts -> O.Parser EnvOptions
+envOptsParser :: OptUtils.Parser EnvOptions
 envOptsParser envOpts =
     EnvOptions
     <$> OptUtils.envOption envOpts "context" (Just 'U')
