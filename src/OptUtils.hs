@@ -97,15 +97,16 @@ envOptional :: (Read a, Show a) => EnvOpts -> String -> String -> String -> (a -
 envOptional envOpts name valDesc help disableHelp =
     case M.lookup name envOpts.content.options >>= readMaybe of
     Just val ->
-        def oh <|> f <$> O.switch (O.long ("no-" <> name) <> O.help h)
+        O.optional (
+            envOption envOpts name Nothing (commonMods <> O.value val <> O.showDefaultWith (defFromEnvHelp envOpts))
+        ) <|> f <$> O.switch (O.long ("no-" <> name) <> O.help h)
         where
-            oh = overrideHelp envOpts (name <> " " <> show val)
-            h = disableHelp val <> oh
+            h = disableHelp val <> overrideHelp envOpts (name <> " " <> show val)
             f True = Nothing
             f False = Just val
-    Nothing -> def ""
+    Nothing -> O.optional (O.option O.auto (O.long name <> commonMods))
     where
-        def suffix = O.optional (O.option O.auto (O.long name <> O.metavar valDesc <> O.help (help <> suffix)))
+        commonMods = O.metavar valDesc <> O.help help
 
 -- | An option with a default value which may be initialized by an environment variable.
 --
@@ -120,4 +121,7 @@ envOption envOpts name shortName mods =
 
 envOptionFromEnv :: Show a => EnvOpts -> a -> O.Mod O.OptionFields a
 envOptionFromEnv envOpts val =
-    O.value val <> O.showDefaultWith (\x -> show x <> ", from " <> envOpts.envVarName)
+    O.value val <> O.showDefaultWith (defFromEnvHelp envOpts)
+
+defFromEnvHelp :: Show a => EnvOpts -> a -> String
+defFromEnvHelp envOpts x = show x <> ", from " <> envOpts.envVarName
