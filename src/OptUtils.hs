@@ -1,23 +1,25 @@
-{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedRecordDot, LambdaCase, FlexibleContexts #-}
 
 module OptUtils
     ( Parser, parseEnvOptions, envSwitch, envOptional, envOption
     ) where
 
 import           Control.Applicative ((<|>))
-import           Control.Monad (guard, unless)
+import           Control.Monad ((>=>), guard, unless)
+import           Control.Monad.Reader
+import           Control.Monad.State
+import           Data.Functor.Compose (Compose(..))
 import qualified Data.Map as M
+import           Data.Maybe (catMaybes)
 import qualified Data.Set as S
+import           Data.Foldable (traverse_)
 import qualified Options.Applicative as O
 import           System.Environment (lookupEnv)
 import           Text.Read.Compat (readMaybe)
 
-type Parser a = EnvOpts -> O.Parser a
+type Parser = Compose (ReaderT EnvVarName (State EnvContent)) O.Parser
 
-data EnvOpts = EnvOpts
-    { envVarName :: String
-    , content :: EnvContent
-    }
+type EnvVarName = String
 
 data EnvContent = EnvContent
     { flags :: S.Set String
@@ -37,14 +39,21 @@ instance Monoid EnvContent where
     mempty = EnvContent mempty mempty mempty
 
 parseEnvOptions :: String -> Parser a -> IO (O.Parser a)
-parseEnvOptions name parser =
+parseEnvOptions name (Compose parser) =
     do
         envOpts <- foldMap (parseEnv . words) <$> lookupEnv name
-        unless (null envOpts.errors)
-            (putStrLn (unlines (
-                ("Warning: unrecognized options in " <> name <> ":")
-                    : (("  * " <>) <$> envOpts.errors))))
-        pure (parser (EnvOpts name envOpts))
+        let (result, remainder) = runState (runReaderT parser name) envOpts
+        let errFmt = formatRemainder remainder
+        result <$
+            unless (null errFmt)
+            (putStrLn (unlines
+                (("Warning: unhandled options in " <> name <> ":") : (("  * " <>) <$> errFmt))))
+
+formatRemainder :: EnvContent -> [String]
+formatRemainder (EnvContent f o e) =
+    (("Unrecognized flag --" <>) <$> S.toList f)
+    <> M.foldMapWithKey (\k v -> ["Unrecognized option: --" <> k <> " " <> v]) o
+    <> e
 
 parseEnv :: [String] -> EnvContent
 parseEnv [] = mempty
@@ -65,58 +74,79 @@ parseEnvFlag flag rest =
 --
 -- If the flag is present in the environment,
 -- the corresponding --no-<name> or --<name> flag will be available to override it.
-envSwitch :: EnvOpts -> String -> Bool -> String -> O.Parser Bool
-envSwitch envOpts name def desc =
-    (/= curDef) <$> O.switch (O.long flag <> O.help help)
+envSwitch :: String -> Bool -> String -> Parser Bool
+envSwitch name def desc =
+    Compose $
+    do
+        otherInEnv <- gets (S.member otherMode . flags)
+        modify (\x -> x{flags = S.delete otherMode x.flags})
+        let flag
+                | otherInEnv = defaultMode
+                | otherwise = otherMode
+        let curDef = def /= otherInEnv
+        let actionHelp
+                | curDef = "Disable"
+                | otherwise = "Enable"
+        extraHelp <- (guard otherInEnv >>) <$> overrideHelp otherMode
+        let help = actionHelp <> " " <> desc <> extraHelp
+        pure ((/= curDef) <$> O.switch (O.long flag <> O.help help))
     where
-        flag
-            | otherInEnv = defaultMode
-            | otherwise = otherMode
-        help = actionHelp <> " " <> desc <> extraHelp
-        actionHelp
-            | curDef = "Disable"
-            | otherwise = "Enable"
-        extraHelp = guard otherInEnv >> overrideHelp envOpts otherMode
-        curDef = def /= otherInEnv
         noFlag = "no-" <> name
         (defaultMode, otherMode)
             | def = (name, noFlag)
             | otherwise = (noFlag, name)
-        otherInEnv = S.member otherMode envOpts.content.flags
 
-overrideHelp :: EnvOpts -> String -> String
-overrideHelp envOpts val = " (override \"--" <> val <> "\" from " <> envOpts.envVarName <> ")"
+overrideHelp :: MonadReader EnvVarName m => String -> m String
+overrideHelp val = asks (\name -> " (override \"--" <> val <> "\" from " <> name <> ")")
 
 -- | An optional value which may be initialized by an environment variable.
 --
 -- If the flag is present in the environment,
 -- a corresponding --no-<name> flag will be available to disable it.
-envOptional :: (Read a, Show a) => EnvOpts -> String -> String -> String -> (a -> String) -> O.Parser (Maybe a)
-envOptional envOpts name valDesc help disableHelp =
-    case M.lookup name envOpts.content.options >>= readMaybe of
+envOptional :: (Read a, Show a) => String -> String -> String -> (a -> String) -> Parser (Maybe a)
+envOptional name valDesc help disableHelp =
+    Compose $
+    readOption name >>=
+    \case
     Just val ->
-        O.optional (
-            envOption envOpts name Nothing (commonMods <> envOptionFromEnv envOpts val)
-        ) <|> f <$> O.switch (O.long ("no-" <> name) <> O.help h)
+        do
+            oh <- overrideHelp (name <> " " <> show val)
+            ov <- envOptionFromEnv val
+            opt <- getCompose (envOption name Nothing (commonMods <> ov))
+            pure $
+                O.optional opt
+                <|> f <$> O.switch (O.long ("no-" <> name) <> O.help (disableHelp val <> oh))
         where
-            h = disableHelp val <> overrideHelp envOpts (name <> " " <> show val)
             f True = Nothing
             f False = Just val
-    Nothing -> O.optional (O.option O.auto (O.long name <> commonMods))
+    Nothing -> pure (O.optional (O.option O.auto (O.long name <> commonMods)))
     where
         commonMods = O.metavar valDesc <> O.help help
+
+readOption :: (Read a, MonadState EnvContent m) => String -> m (Maybe a)
+readOption name =
+    do
+        result <- gets (M.lookup name . options >=> readMaybe)
+        result <$ traverse_ (const (modify (\x -> x{options = M.delete name x.options}))) result
 
 -- | An option with a default value which may be initialized by an environment variable.
 --
 -- (the default value should be specified in the provided @O.Mod@ argument)
-envOption :: (Read a, Show a) => EnvOpts -> String -> Maybe Char -> O.Mod O.OptionFields a -> O.Parser a
-envOption envOpts name shortName mods =
-    O.option O.auto
-    (O.long name <> foldMap O.short shortName <> mods <> opts)
+envOption :: (Read a, Show a) => String -> Maybe Char -> O.Mod O.OptionFields a -> Parser a
+envOption name shortName mods =
+    Compose $
+    traverse readOption ([name] <> maybe [] (pure . pure) shortName)
+    >>=
+    \case
+    [] -> pure (O.option O.auto baseMods)
+    [val] -> O.option O.auto . (baseMods <>) <$> envOptionFromEnv val
+    _ ->
+        O.option O.auto baseMods <$
+        modify (\x -> x{errors = x.errors <> ["Both --" <> name <> " and -" <> maybe [] pure shortName <> " specified"]})
+    . catMaybes
     where
-        opts = foldMap (envOptionFromEnv envOpts) (l name <|> (shortName >>= l . pure))
-        l n = M.lookup n envOpts.content.options >>= readMaybe
+        baseMods = O.long name <> foldMap O.short shortName <> mods
 
-envOptionFromEnv :: Show a => EnvOpts -> a -> O.Mod O.OptionFields a
-envOptionFromEnv envOpts val =
-    O.value val <> O.showDefaultWith (\x -> show x <> ", from " <> envOpts.envVarName)
+envOptionFromEnv :: (MonadReader EnvVarName m, Show a) => a -> m (O.Mod O.OptionFields a)
+envOptionFromEnv val =
+    asks (\envVar -> O.value val <> O.showDefaultWith (\x -> show x <> ", from " <> envVar))

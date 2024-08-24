@@ -16,15 +16,15 @@ data ResolutionOptions = ResolutionOpts
     }
 
 parser :: OptUtils.Parser ResolutionOptions
-parser envOpts =
+parser =
     ResolutionOpts
-    <$> OptUtils.envSwitch envOpts "trivial" True "trivial conflicts resolution"
-    <*> OptUtils.envSwitch envOpts "reduce" True "conflict reduction"
-    <*> OptUtils.envOptional envOpts "untabify" "TABSIZE"
+    <$> OptUtils.envSwitch "trivial" True "trivial conflicts resolution"
+    <*> OptUtils.envSwitch "reduce" True "conflict reduction"
+    <*> OptUtils.envOptional "untabify" "TABSIZE"
         "Convert tabs to the spaces at the tab stops for the given tab size"
         (\x -> "Disable converting tabs to " <> show x <> " spaces at the tab stops")
-    <*> OptUtils.envSwitch envOpts "line-endings" True "line-ending characters conflict resolution"
-    <*> OptUtils.envSwitch envOpts "added-lines" False "added lines resolution (EXPERIMENTAL)"
+    <*> OptUtils.envSwitch "line-endings" True "line-ending characters conflict resolution"
+    <*> OptUtils.envSwitch "added-lines" False "added lines resolution (EXPERIMENTAL)"
 
 isResolving :: ResolutionOptions -> Bool
 isResolving o = o.trivial || o.reduce || isJust o.untabify || o.lineEndings || o.addedLines

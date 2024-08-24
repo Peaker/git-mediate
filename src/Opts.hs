@@ -64,13 +64,13 @@ optionsParser envOpts =
             <|> pure Nothing
 
 envOptsParser :: OptUtils.Parser EnvOptions
-envOptsParser envOpts =
+envOptsParser =
     EnvOptions
-    <$> OptUtils.envOption envOpts "context" (Just 'U')
+    <$> OptUtils.envOption "context" (Just 'U')
         ( O.metavar "LINECOUNT" <> O.showDefault <> O.value 3
             <> O.help "Number of context lines around dumped diffs"
         )
-    <*> ResOpts.parser envOpts
+    <*> ResOpts.parser
 
 data CmdArgs = CmdVersion | CmdOptions Options
 
