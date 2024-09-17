@@ -13,6 +13,7 @@ data ResolutionOptions = ResolutionOpts
     , untabify :: Maybe Int
     , lineEndings :: Bool
     , addedLines :: Bool
+    , splitMarkers :: Bool
     }
 
 parser :: OptUtils.Parser ResolutionOptions
@@ -25,6 +26,7 @@ parser =
         (\x -> "Disable converting tabs to " <> show x <> " spaces at the tab stops")
     <*> OptUtils.envSwitch "line-endings" True "line-ending characters conflict resolution"
     <*> OptUtils.envSwitch "added-lines" False "added lines resolution (EXPERIMENTAL)"
+    <*> OptUtils.envSwitch "split-markers" False "split conflicts at tilde-split-markers"
 
 isResolving :: ResolutionOptions -> Bool
 isResolving o = o.trivial || o.reduce || isJust o.untabify || o.lineEndings || o.addedLines

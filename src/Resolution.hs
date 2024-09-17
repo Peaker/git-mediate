@@ -11,6 +11,8 @@ import           Conflict (Conflict(..), Sides(..))
 import qualified Conflict
 import           Control.Monad (guard)
 import           Data.Foldable (Foldable(..))
+import           Data.List (isPrefixOf)
+import           Data.List.Split (splitWhen)
 import           Generic.Data (Generic, Generically(..))
 import           ResolutionOpts
 
@@ -155,7 +157,29 @@ resolveContent opts =
     foldMap go
     where
         go (Left line) = NewContent mempty (unlines [line])
-        go (Right conflict) =
+        go (Right conflict)
+            | opts.splitMarkers =
+                r <> splitProgress
+            | otherwise = resolve conflict
+                where
+                    s = splitConflict conflict
+                    r = foldMap resolve s
+                    splitProgress =
+                        case s of
+                        (_:_:_) -> NewContent (Result 0 1 0) mempty
+                        _ -> mempty
+        resolve conflict =
             formatResolution $ resolveConflict opts $
             (if opts.lineEndings then lineBreakFix else id) $
             maybe id untabifyConflict opts.untabify conflict
+
+splitConflict :: Conflict -> [Conflict]
+splitConflict c =
+    maybe [c] ((\s -> c{bodies=s}) <$>) $
+    matchSplits $ splitWhen (isPrefixOf "~~~~~~~") <$> c.bodies
+
+matchSplits :: Sides [a] -> Maybe [Sides a]
+matchSplits (Sides (a:as) (b:bs) (c:cs)) =
+    (Sides a b c :) <$> matchSplits (Sides as bs cs)
+matchSplits (Sides [] [] []) = Just []
+matchSplits _ = Nothing
