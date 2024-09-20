@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [synchronize, opened, reopened]
+  push:
+    branches: [main]
+  schedule:
+    # additionally run once per week (At 00:00 on Sunday) to maintain cache
+    - cron: '0 0 * * 0'
+
+jobs:
+  stack:
+    name: ghc ${{ matrix.ghc }} / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: ["3.1.1"]
+        ghc: ["9.6.6"]
+        os: ["ubuntu-latest"]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: haskell/actions/setup@v2.4
+      name: Setup Haskell Stack
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        stack-version: ${{ matrix.stack }}
+
+    - uses: actions/cache@v4.0.2
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      name: Cache ~/.stack
+      with:
+        path: ~/.stack
+        key: ${{ runner.os }}-${{ matrix.ghc }}-stack
+
+    - name: Install Haskell dependencies
+      run: |
+        stack build --system-ghc --test --bench --no-run-tests --no-run-benchmarks --only-dependencies
+
+    - name: Build
+      run: |
+        stack build --system-ghc --test --bench --no-run-tests --no-run-benchmarks
+
+    - name: Test
+      # Running the tests only on Linux should suffice
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      run: |
+        stack test --system-ghc
