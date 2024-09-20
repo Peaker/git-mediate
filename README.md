@@ -1,4 +1,6 @@
-# Introduction
+# git-mediate [![Hackage version](https://img.shields.io/hackage/v/git-mediate.svg?label=Hackage)](https://hackage.haskell.org/package/git-mediate)
+
+## Introduction
 
 Handling conflicts is difficult!
 
@@ -66,26 +68,26 @@ select that side appropriately.
 When all conflicts have been resolved in a file, "git add" will be
 used on it automatically.
 
-## Simpler case
+### Simpler case
 
 You might just resolve the conflicts manually and remove the merge markers from all of the conflicts.
 
 In such a case, just run git-mediate, and it will "git add" the
 file for you.
 
-# Installation
+## Installation
 
-## Using package managers
+### Using package managers
 
 * macOS: `brew install git-mediate`
 * Linux (debian): `apt-get install git-mediate`
 
-## Using haskell-stack
+### Using haskell-stack
 
 1. Install [haskell stack](https://docs.haskellstack.org/en/stable/)
 2. Run: `stack install git-mediate`
 
-## From sources
+### From sources
 
 Clone it:
 
@@ -96,25 +98,25 @@ Option #1: Build & install using stack: `stack install` (make sure you installed
 
 Option #2: Build & install using cabal: `cabal install` (make sure `~/.cabal/bin` is in your `$PATH`)
 
-# Use
+## Use
 
 Call the git-mediate from a git repository with conflicts.
 
-# Additional features
+## Additional features
 
-## Open editor
+### Open editor
 
 You can use the `-e` flag to invoke your `$EDITOR` on every conflicted file that could not be automatically resolved.
 
-## Show conflict diffs
+### Show conflict diffs
 
 Sometimes, the conflict is just a giant block of incomprehensible text next to another giant block of incomprehensible text.
 
 You can use the `-d` flag to show the conflict in diff-from-base form. Then, you can manually apply the changes you see in both the base and wherever needed, and use git-mediate again to make sure you've updated everything appropriately.
 
-# License
+## License
 
-Copyright (C) 2014-2023  Eyal Lotem
+Copyright (C) 2014-2024  Eyal Lotem
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
