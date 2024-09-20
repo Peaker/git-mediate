@@ -1,3 +1,12 @@
+## 1.1.0 / 2024.09.20
+
+* `--split-markers` option to help users split large conflicts to smaller parts
+* `--lines-added-around` option to auto-resolve conflicts of line added from different sides
+* Command-line options are are also parsed from the `GIT_MEDIATE_OPTIONS` environment variables
+* Can disable auto-resolution with the `--no-trivial`, `--no-reduce`, and `--no-line-endings` flags
+* Improved `--editor` support for VS Code and Xcode
+* Fixed handling of filenames containing spaces and special characters
+
 ## 1.0.9 / 2023.07.25
 
 * Do not warn when git is set to use `zdiff3` conflict style

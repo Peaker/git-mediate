@@ -14,3 +14,4 @@ tags
 .ghcid
 .vscode/
 .envrc
+.DS_Store
