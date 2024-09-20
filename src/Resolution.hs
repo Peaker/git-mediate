@@ -37,19 +37,11 @@ resolveGenLines opts sides@(Sides a base b) =
     _ | opts.addedLines ->
         case addedBothSides a b <> addedBothSides b a of
         [x] -> Just x
-        _ ->
-            case res a b <> res b a of
-            [x] -> Just x
-            _ -> Nothing
+        _ -> Nothing
     _ -> Nothing
     where
         n = length base
         addedBothSides x y = [x <> drop n y | drop (length x - n) x == base && take n y == base]
-        res x y =
-            [y <> drop n x | take n x == base] <>
-            [take initLen x <> y | drop initLen x == base]
-            where
-                initLen = length x - n
 
 resolveConflict :: ResolutionOptions -> Conflict -> Resolution
 resolveConflict opts c

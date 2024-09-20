@@ -25,7 +25,8 @@ parser =
         "Convert tabs to the spaces at the tab stops for the given tab size"
         (\x -> "Disable converting tabs to " <> show x <> " spaces at the tab stops")
     <*> OptUtils.envSwitch "line-endings" True "line-ending characters conflict resolution"
-    <*> OptUtils.envSwitch "added-lines" False "added lines resolution (EXPERIMENTAL)"
+    <*> OptUtils.envSwitch "lines-added-around" False
+        "resolve conflicts where one change prepended lines to the base and the other appended"
     <*> OptUtils.envSwitch "split-markers" False "split conflicts at tilde-split-markers"
 
 isResolving :: ResolutionOptions -> Bool
