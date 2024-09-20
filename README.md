@@ -1,4 +1,4 @@
-# git-mediate [![Hackage version](https://img.shields.io/hackage/v/git-mediate.svg?label=Hackage)](https://hackage.haskell.org/package/git-mediate)
+# git-mediate [![Hackage version](https://img.shields.io/hackage/v/git-mediate.svg?label=Hackage)](https://hackage.haskell.org/package/git-mediate) [![homebrew](https://img.shields.io/homebrew/v/git-mediate.svg)](https://formulae.brew.sh/formula/git-mediate)
 
 ## Introduction
 
