@@ -43,10 +43,24 @@ resolveGenLines opts sides@(Sides a base b) =
         n = length base
         addedBothSides x y = [x <> drop n y | drop (length x - n) x == base && take n y == base]
 
+resolveReduced :: ResolutionOptions -> Sides [String] -> Maybe [String]
+resolveReduced opts sides
+    | opts.indentation =
+        map . (<>) <$> resolveGen prefixes <*> resolveGenLines opts unprefixed
+    | otherwise = resolveGenLines opts sides
+    where
+        prefixes = takeWhile (== ' ') . commonPrefix <$> sides
+        unprefixed = map . drop . length <$> prefixes <*> sides
+
+commonPrefix :: Eq a => [[a]] -> [a]
+commonPrefix [] = []
+commonPrefix [x] = x
+commonPrefix (x:xs) = map fst . takeWhile (uncurry (==)) . zip x $ commonPrefix xs
+
 resolveConflict :: ResolutionOptions -> Conflict -> Resolution
 resolveConflict opts c
     | matchTop == 0 && matchBottom == 0 || not opts.reduce =
-        maybe (NoResolution c) (Resolution . unlines) (resolveGenLines opts c.bodies)
+        maybe (NoResolution c) (Resolution . unlines) (resolveReduced opts c.bodies)
     | otherwise =
         case resolveGenLines opts reduced.bodies of
         Just x -> Resolution $ formatRes x

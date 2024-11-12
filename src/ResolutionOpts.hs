@@ -14,6 +14,7 @@ data ResolutionOptions = ResolutionOpts
     , lineEndings :: Bool
     , addedLines :: Bool
     , splitMarkers :: Bool
+    , indentation :: Bool
     }
 
 parser :: OptUtils.Parser ResolutionOptions
@@ -28,6 +29,7 @@ parser =
     <*> OptUtils.envSwitch "lines-added-around" False
         "resolve conflicts where one change prepended lines to the base and the other appended"
     <*> OptUtils.envSwitch "split-markers" False "split conflicts at tilde-split-markers"
+    <*> OptUtils.envSwitch "indentation" False "indentation conflict resolution"
 
 isResolving :: ResolutionOptions -> Bool
 isResolving o = o.trivial || o.reduce || isJust o.untabify || o.lineEndings || o.addedLines
