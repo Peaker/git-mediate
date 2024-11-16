@@ -28,7 +28,7 @@ parser =
     <*> OptUtils.envSwitch "line-endings" True "line-ending characters conflict resolution"
     <*> OptUtils.envSwitch "lines-added-around" False
         "resolve conflicts where one change prepended lines to the base and the other appended"
-    <*> OptUtils.envSwitch "split-markers" False "split conflicts at tilde-split-markers"
+    <*> OptUtils.envSwitch "split-markers" True "split conflicts at tilde-split-markers"
     <*> OptUtils.envSwitch "indentation" False "indentation conflict resolution"
 
 isResolving :: ResolutionOptions -> Bool
