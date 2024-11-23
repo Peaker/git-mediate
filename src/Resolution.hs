@@ -165,15 +165,17 @@ resolveContent opts =
         go (Left line) = NewContent mempty (unlines [line])
         go (Right conflict)
             | opts.splitMarkers =
-                r <> splitProgress
+                NewContent
+                { newContent = r.newContent
+                , result =
+                    if r.result.failedToResolve + r.result.reducedConflicts > 0
+                    then mempty {reducedConflicts = 1} -- The split is a reduction
+                    else mempty {resolvedSuccessfully = 1}
+                }
             | otherwise = resolve conflict
                 where
                     s = splitConflict conflict
                     r = foldMap resolve s
-                    splitProgress =
-                        case s of
-                        (_:_:_) -> NewContent (Result 0 1 0) mempty
-                        _ -> mempty
         resolve conflict =
             formatResolution $ resolveConflict opts $
             (if opts.lineEndings then lineBreakFix else id) $
