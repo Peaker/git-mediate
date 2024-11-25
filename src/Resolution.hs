@@ -17,8 +17,9 @@ import           Data.List.Split (splitWhen)
 import           Generic.Data (Generic, Generically(..))
 import qualified Language.Haskell as Haskell
 import qualified Language.Markdown as Markdown
+import qualified Language.PythonReqs as PythonReqs
 import           ResolutionOpts
-import           System.FilePath (takeExtension)
+import           System.FilePath (takeExtension, takeFileName)
 
 import           Prelude.Compat
 
@@ -181,6 +182,7 @@ resolveContent opts filePath chunks
             where
                 languageParts
                     | takeExtension filePath == ".hs" = Haskell.splitImports conflict
+                    | takeFileName filePath == "requirements.txt" = PythonReqs.splitRequirements conflict
                     | otherwise = [conflict]
                 parts
                     | opts.splitMarkers = languageParts >>= splitConflict
