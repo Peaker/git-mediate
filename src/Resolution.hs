@@ -165,9 +165,8 @@ resolveContent opts =
         go (Left line) = NewContent mempty (unlines [line])
         go (Right conflict)
             | opts.splitMarkers =
-                NewContent
-                { newContent = r.newContent
-                , result =
+                r
+                { result =
                     if r.result.failedToResolve + r.result.reducedConflicts > 0
                     then mempty {reducedConflicts = 1} -- The split is a reduction
                     else mempty {resolvedSuccessfully = 1}
