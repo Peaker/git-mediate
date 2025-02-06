@@ -139,7 +139,7 @@ allSame _ = True
 
 lineBreakFix :: Conflict -> Conflict
 lineBreakFix c
-    | any null (toList c.bodies)
+    | any null c.bodies
     || allSame (toList endings) = c
     | otherwise =
         case resolveGen endings of
