@@ -81,6 +81,7 @@ file for you.
 
 * macOS: `brew install git-mediate`
 * Linux (debian): `apt-get install git-mediate`
+* Linux (arch): `yay -S git-mediate` (see https://aur.archlinux.org/packages/git-mediate)
 
 ### Using haskell-stack
 
