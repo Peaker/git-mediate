@@ -48,7 +48,7 @@ optionsParser envOpts =
     <*> colorParser
     <*> O.switch
         ( O.long "style" <> O.short 's'
-            <> O.help "Configure git's global merge.conflictstyle to diff3 if needed"
+            <> O.help "Configure git's global merge.conflictstyle to zdiff3 if needed"
         )
     <*> O.optional
         ( O.strOption
