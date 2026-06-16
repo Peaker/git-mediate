@@ -36,7 +36,7 @@ getConflictStyle =
 
 setConflictStyle :: IO ()
 setConflictStyle =
-    callProcess "git" ["config", "--global", "merge.conflictstyle", "diff3"]
+    callProcess "git" ["config", "--global", "merge.conflictstyle", "zdiff3"]
 
 checkConflictStyle :: Options -> IO ()
 checkConflictStyle opts =
@@ -46,14 +46,14 @@ checkConflictStyle opts =
             do
                 unless opts.shouldSetConflictStyle $
                     fail $ concat
-                    [ "merge.conflictstyle must be diff3 but is "
+                    [ "merge.conflictstyle must be zdiff3/diff3 but is "
                     , show conflictStyle
                     , ". Use -s to automatically set it globally"
                     ]
                 setConflictStyle
 
                 newConflictStyle <- getConflictStyle
-                when (newConflictStyle /= "diff3") $
+                when (newConflictStyle /= "zdiff3") $
                     fail $ concat
                     [ "Attempt to set conflict style failed. Perhaps you have"
                     , " an incorrect merge.conflictstyle configuration "

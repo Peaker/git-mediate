@@ -31,6 +31,11 @@ git-mediate
 
 echo 'diff3 accepted correctly'
 
+git config --global merge.conflictstyle zdiff3
+git-mediate
+
+echo 'zdiff3 accepted correctly'
+
 git config merge.conflictstyle diff2
 (git-mediate && exit 12) ||
 echo 'Per-project conflict style diff2 errorized correctly'
@@ -41,7 +46,7 @@ git config --unset merge.conflictstyle
 git config --global merge.conflictstyle diff2
 git-mediate -s
 style=$(git config merge.conflictstyle)
-if [ "${style}" = "diff3" ]; then
+if [ "${style}" = "zdiff3" ]; then
   echo 'Conflict style set correctly'
 else
   echo 'The -s option did not set conflict style'

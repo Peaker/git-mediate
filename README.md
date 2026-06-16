@@ -4,10 +4,10 @@
 
 Handling conflicts is difficult!
 
-One useful way to handle them, is to use git's diff3 conflict style:
+One useful way to handle them, is to use git's {z,}diff3 conflict style:
 
 ```shell
-git config --global merge.conflictstyle diff3
+git config --global merge.conflictstyle zdiff3
 ```
 
 And then when you get a conflict, it looks like:
