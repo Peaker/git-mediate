@@ -1,3 +1,11 @@
+## 1.2.0 / 2026.08.19
+
+* Add optional automatic resolution of indentation-only conflicts
+* Enable splitting conflicts at tilde markers by default
+* Fix status reporting for split conflicts
+* Prefer Git's `zdiff3` conflict style while continuing to accept `diff3`
+* Avoid opening the editor when no unresolved conflicts remain
+
 ## 1.1.0 / 2024.09.20
 
 * `--split-markers` option to help users split large conflicts to smaller parts
