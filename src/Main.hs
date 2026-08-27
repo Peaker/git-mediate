@@ -128,7 +128,7 @@ resolve :: ColorEnable -> Options -> FilePath -> IO Result
 resolve colorEnable opts fileName =
     do
         resolutions <-
-            Resolution.resolveContent opts.envOptions.resolution
+            Resolution.resolveContent opts.envOptions.resolution fileName
             . Conflict.parse
             <$> readFile fileName
         resolutions.result <$ handleFileResult colorEnable opts fileName resolutions

@@ -1,0 +1,44 @@
+#!/bin/sh
+
+set -eux
+
+DIR="$( dirname "$0" )"
+cd "${DIR}"
+
+export HOME="$(pwd)"
+
+cleanup () {
+  rm -rf .git .gitconfig Imports.hs
+}
+trap cleanup EXIT
+cleanup
+
+git init >/dev/null
+git config user.email test@test.com
+git config user.name Test
+git config --global merge.conflictstyle diff3
+
+cat > Imports.hs <<'EOF'
+<<<<<<< HEAD
+import A (a0, a1)
+import B (b0)
+||||||| base
+import A (a0)
+import B (b0)
+=======
+import A (a0)
+import B (b0, b1)
+>>>>>>> branch
+EOF
+
+git-mediate --merge-file Imports.hs
+
+cat > expected <<'EOF'
+import A (a0, a1)
+import B (b0, b1)
+EOF
+
+diff -u expected Imports.hs
+rm expected
+
+echo Success

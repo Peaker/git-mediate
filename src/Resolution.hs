@@ -14,7 +14,9 @@ import           Data.Foldable (Foldable(..))
 import           Data.List (isPrefixOf)
 import           Data.List.Split (splitWhen)
 import           Generic.Data (Generic, Generically(..))
+import qualified HaskellConflict
 import           ResolutionOpts
+import           System.FilePath (takeExtension)
 
 import           Prelude.Compat
 
@@ -158,8 +160,8 @@ formatResolution (NoResolution c) = NewContent (Result 0 0 1) (Conflict.pretty c
 formatResolution (Resolution trivialLines) = NewContent (Result 1 0 0) trivialLines
 formatResolution (PartialResolution newLines) = NewContent (Result 0 1 0) newLines
 
-resolveContent :: ResolutionOptions -> [Either String Conflict] -> NewContent
-resolveContent opts =
+resolveContent :: ResolutionOptions -> FilePath -> [Either String Conflict] -> NewContent
+resolveContent opts filePath =
     foldMap go
     where
         go (Left line) = NewContent mempty (unlines [line])
@@ -173,9 +175,12 @@ resolveContent opts =
                     | otherwise -> mempty {resolvedSuccessfully = 1}
             }
             where
-                parts
-                    | opts.splitMarkers = splitConflict conflict
+                languageParts
+                    | takeExtension filePath == ".hs" = HaskellConflict.splitImports conflict
                     | otherwise = [conflict]
+                parts
+                    | opts.splitMarkers = languageParts >>= splitConflict
+                    | otherwise = languageParts
                 r = foldMap resolve parts
         resolve conflict =
             formatResolution $ resolveConflict opts $

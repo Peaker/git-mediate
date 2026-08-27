@@ -64,6 +64,7 @@ executable git-mediate
   other-modules:       Conflict
                      , Environment
                      , Git
+                     , HaskellConflict
                      , Opts
                      , OptUtils
                      , PPDiff
