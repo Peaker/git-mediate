@@ -21,5 +21,7 @@ echo 'Config test'
 echo 'Haskell imports test'
 "${DIR}"/haskell-imports/test
 
+echo 'Markdown bullets test'
+"${DIR}"/markdown-bullets/test
 
 echo 'Tests successful'

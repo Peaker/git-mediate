@@ -105,6 +105,19 @@ Call the git-mediate from a git repository with conflicts.
 
 ## Additional features
 
+### Merge Markdown bullet additions
+
+Run `git-mediate --markdown-bullets` when two branches insert entries at the
+same place in a Markdown list. It places the incoming block first and keeps
+each block in its original order. During a rebase this puts the replayed
+feature commit’s entries above the upstream entries. In an ordinary merge
+the branch being merged in comes first.
+
+The option applies to `.md` and `.markdown` files. It recognizes flush-left
+lists using the same bullet marker (`-`, `*`, or `+`) and keeps indented
+continuations, nested lists, and blank lines with their entries. Competing
+edits to an existing item still need review.
+
 ### Open editor
 
 You can use the `-e` flag to invoke your `$EDITOR` on every conflicted file that could not be automatically resolved.

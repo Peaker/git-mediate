@@ -1,0 +1,106 @@
+#!/bin/sh
+set -eu
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+cd "$tmp"
+export HOME="$tmp"
+git init -q -b main
+git config user.name Test
+git config user.email test@example.com
+git config merge.conflictstyle zdiff3
+
+cat > older <<'END'
+- Existing entry
+END
+cat > upstream <<'END'
+- Upstream entry
+  that wraps.
+- Another upstream entry
+END
+cat > feature <<'END'
+- Feature entry
+  with more detail.
+
+  A second paragraph.
+  - A nested point
+- Another feature entry
+END
+cat older > Notes.md
+git add Notes.md
+git commit -qm base
+git branch feature
+cat upstream older > Notes.md
+git commit -qam upstream
+git checkout -q feature
+cat feature older > Notes.md
+git commit -qam feature
+if git rebase main; then exit 1; fi
+
+if git-mediate --merge-file Notes.md; then exit 1; fi
+git-mediate --markdown-bullets
+cat feature upstream older > expected
+git show :Notes.md > staged
+diff -u expected staged
+GIT_EDITOR=true git rebase --continue
+
+unresolved () {
+    cp "$1" original
+    if git-mediate --no-reduce --markdown-bullets --merge-file "$1"; then exit 1; fi
+    diff -u original "$1"
+}
+
+cat > Notes.md <<-'END'
+	<<<<<<< HEAD
+	* Current wording
+	||||||| base
+	* Original wording
+	=======
+	* Incoming wording
+	>>>>>>> feature
+	END
+unresolved Notes.md
+
+cat > Notes.txt <<-'END'
+	<<<<<<< HEAD
+	+ One entry
+	||||||| base
+	=======
+	+ Another entry
+	>>>>>>> feature
+	END
+unresolved Notes.txt
+cat Notes.txt > Notes.md
+echo '  Shared continuation' >> Notes.md
+unresolved Notes.md
+(echo '~~~'; cat Notes.txt; echo '~~~') > Notes.md
+unresolved Notes.md
+
+cat > Notes.md <<-'END'
+	<<<<<<< HEAD
+	- Upstream
+	- Shared entry
+	  with details.
+	||||||| base
+	=======
+	- Shared entry
+	  with details.
+	- Feature
+	>>>>>>> feature
+	END
+unresolved Notes.md
+
+cat > Notes.md <<-'END'
+	<<<<<<< HEAD
+	* Existing
+	* Upstream
+	||||||| base
+	* Existing
+	=======
+	* Existing
+	* Feature
+	>>>>>>> feature
+	END
+GIT_MEDIATE_OPTIONS=--markdown-bullets git-mediate --merge-file Notes.md
+printf '%s\n' '* Existing' '* Feature' '* Upstream' > expected
+diff -u expected Notes.md

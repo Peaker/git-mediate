@@ -14,6 +14,7 @@ data ResolutionOptions = ResolutionOpts
     , lineEndings :: Bool
     , addedLines :: Bool
     , splitMarkers :: Bool
+    , markdownBullets :: Bool
     , indentation :: Bool
     }
 
@@ -29,7 +30,9 @@ parser =
     <*> OptUtils.envSwitch "lines-added-around" False
         "resolve conflicts where one change prepended lines to the base and the other appended"
     <*> OptUtils.envSwitch "split-markers" True "split conflicts at tilde-split-markers"
+    <*> OptUtils.envSwitch "markdown-bullets" False
+        "merge concurrent Markdown bullet additions, placing the incoming side first"
     <*> OptUtils.envSwitch "indentation" False "indentation conflict resolution"
 
 isResolving :: ResolutionOptions -> Bool
-isResolving o = o.trivial || o.reduce || isJust o.untabify || o.lineEndings || o.addedLines
+isResolving o = o.trivial || o.reduce || isJust o.untabify || o.lineEndings || o.addedLines || o.markdownBullets

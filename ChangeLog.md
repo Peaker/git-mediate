@@ -1,3 +1,7 @@
+## Unreleased
+
+* Add `--markdown-bullets` to merge concurrent list additions with the incoming entries first
+
 ## 1.2.0 / 2026.08.19
 
 * Add optional automatic resolution of indentation-only conflicts

@@ -10,11 +10,13 @@ module Resolution
 import           Conflict (Conflict(..), Sides(..))
 import qualified Conflict
 import           Control.Monad (guard)
+import           Data.Char (toLower)
 import           Data.Foldable (Foldable(..))
 import           Data.List (isPrefixOf)
 import           Data.List.Split (splitWhen)
 import           Generic.Data (Generic, Generically(..))
 import qualified Language.Haskell as Haskell
+import qualified Language.Markdown as Markdown
 import           ResolutionOpts
 import           System.FilePath (takeExtension)
 
@@ -161,8 +163,10 @@ formatResolution (Resolution trivialLines) = NewContent (Result 1 0 0) trivialLi
 formatResolution (PartialResolution newLines) = NewContent (Result 0 1 0) newLines
 
 resolveContent :: ResolutionOptions -> FilePath -> [Either String Conflict] -> NewContent
-resolveContent opts filePath =
-    foldMap go
+resolveContent opts filePath chunks
+    | opts.markdownBullets && map toLower (takeExtension filePath) `elem` [".md", ".markdown"] =
+        foldMap (either go (formatResolution . Resolution . unlines)) (Markdown.merge chunks)
+    | otherwise = foldMap go chunks
     where
         go (Left line) = NewContent mempty (unlines [line])
         go (Right conflict) =

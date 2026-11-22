@@ -65,6 +65,7 @@ executable git-mediate
                      , Environment
                      , Git
                      , Language.Haskell
+                     , Language.Markdown
                      , Opts
                      , OptUtils
                      , PPDiff
