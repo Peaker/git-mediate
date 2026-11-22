@@ -124,9 +124,12 @@ With `git-mediate` on your `PATH`, configure the driver in each clone where
 you want it enabled.
 
 ```sh
-git config merge.mediate.driver 'git-mediate --markdown-bullets --merge-driver %O %A %B %L %P'
+git config merge.mediate.driver 'git-mediate --merge-driver %O %A %B %L %P'
 git config merge.mediate.recursive text
 ```
+
+Add `--global` to configure the driver across repositories. For Markdown
+bullets, set `GIT_MEDIATE_OPTIONS=--markdown-bullets` in the project environment.
 
 Select paths in `.gitattributes` for the project or `.git/info/attributes`
 for your local clone. For example:

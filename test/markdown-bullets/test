@@ -48,8 +48,8 @@ GIT_EDITOR=true git rebase --continue
 # The driver runs inside Git, so a fully resolved replay needs no continue.
 git checkout -q driver-feature
 printf '%s\n' 'Notes.md merge=mediate conflict-marker-size=11' > .git/info/attributes
-git config merge.mediate.driver 'git-mediate --markdown-bullets --merge-driver %O %A %B %L %P'
-git rebase main
+git config merge.mediate.driver 'git-mediate --merge-driver %O %A %B %L %P'
+GIT_MEDIATE_OPTIONS=--markdown-bullets git rebase main
 git show HEAD:Notes.md > committed
 diff -u expected committed
 
