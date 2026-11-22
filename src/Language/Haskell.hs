@@ -1,6 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude, OverloadedRecordDot #-}
 
-module HaskellConflict (splitImports) where
+module Language.Haskell (splitImports) where
 
 import Conflict (Conflict(..), Sides(..))
 

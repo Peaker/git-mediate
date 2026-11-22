@@ -14,7 +14,7 @@ import           Data.Foldable (Foldable(..))
 import           Data.List (isPrefixOf)
 import           Data.List.Split (splitWhen)
 import           Generic.Data (Generic, Generically(..))
-import qualified HaskellConflict
+import qualified Language.Haskell as Haskell
 import           ResolutionOpts
 import           System.FilePath (takeExtension)
 
@@ -176,7 +176,7 @@ resolveContent opts filePath =
             }
             where
                 languageParts
-                    | takeExtension filePath == ".hs" = HaskellConflict.splitImports conflict
+                    | takeExtension filePath == ".hs" = Haskell.splitImports conflict
                     | otherwise = [conflict]
                 parts
                     | opts.splitMarkers = languageParts >>= splitConflict
