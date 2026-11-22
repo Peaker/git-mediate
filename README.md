@@ -118,6 +118,29 @@ lists using the same bullet marker (`-`, `*`, or `+`) and keeps indented
 continuations, nested lists, and blank lines with their entries. Competing
 edits to an existing item still need review.
 
+### Run automatically as a Git merge driver
+
+With `git-mediate` on your `PATH`, configure the driver in each clone where
+you want it enabled.
+
+```sh
+git config merge.mediate.driver 'git-mediate --markdown-bullets --merge-driver %O %A %B %L %P'
+git config merge.mediate.recursive text
+```
+
+Select paths in `.gitattributes` for the project or `.git/info/attributes`
+for your local clone. For example:
+
+```gitattributes
+ChangeLog.md merge=mediate
+```
+
+The driver runs Git's three-way text merge with `zdiff3` and applies
+git-mediate's enabled rules to the remaining conflicts. Git stages a clean
+result and can continue a rebase automatically. Any remaining conflicts
+are left for review. The driver uses its own conflict style, so this setup
+works independently of `merge.conflictstyle`.
+
 ### Open editor
 
 You can use the `-e` flag to invoke your `$EDITOR` on every conflicted file that could not be automatically resolved.

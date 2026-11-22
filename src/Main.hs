@@ -23,7 +23,8 @@ import           StrUtils ((</>), ensureNewline)
 import           System.Directory (renameFile, removeFile, getPermissions, setPermissions)
 import           System.Exit (ExitCode(..), exitWith)
 import           System.FilePath ((<.>))
-import           System.Process (callProcess, readProcess)
+import           System.IO (readFile')
+import           System.Process (callProcess, rawSystem, readProcess)
 
 import           Prelude.Compat
 
@@ -226,10 +227,41 @@ exitCodeOf res
 exitProcess :: Result -> IO ()
 exitProcess = exitWith . exitCodeOf
 
+runMergeDriver :: ResolutionOpts.ResolutionOptions -> Opts.MergeDriver -> IO ()
+runMergeDriver opts driver =
+    do
+        status <- rawSystem "git"
+            [ "merge-file", "--zdiff3", "--marker-size=" ++ show driver.markerSize
+            , "-L", "ours", "-L", "base", "-L", "theirs"
+            , "--", driver.currentFile, driver.baseFile, driver.incomingFile
+            ]
+        case status of
+            ExitFailure n | n >= 1 && n <= 127 ->
+                do
+                    input <- readFile' driver.currentFile
+                    let chunks = Conflict.parseWithMarkerSize driver.markerSize input
+                    case rights chunks of
+                        [] -> exitWith (ExitFailure 129)
+                        _ -> do
+                            let resolved = Resolution.resolveContent opts driver.targetPath chunks
+                            -- Git owns the index and the temporary files in driver mode.
+                            when (resolved.result.resolvedSuccessfully + resolved.result.reducedConflicts > 0) $
+                                writeFile driver.currentFile resolved.newContent
+                            exitWith $ if Resolution.fullySuccessful resolved.result
+                                then ExitSuccess else ExitFailure 1
+            _ -> exitWith status
+
 main :: IO ()
 main =
     do
         opts <- Opts.getOpts
+        case opts.mergeDriver of
+            Just driver -> runMergeDriver opts.envOptions.resolution driver
+            Nothing -> runMediate opts
+
+runMediate :: Options -> IO ()
+runMediate opts =
+    do
         colorEnable <- maybe shouldUseColorByTerminal pure opts.shouldUseColor
         checkConflictStyle opts
         case opts.mergeSpecificFile of

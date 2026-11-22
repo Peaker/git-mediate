@@ -35,6 +35,7 @@ git commit -qam upstream
 git checkout -q feature
 cat feature older > Notes.md
 git commit -qam feature
+git branch driver-feature
 if git rebase main; then exit 1; fi
 
 if git-mediate --merge-file Notes.md; then exit 1; fi
@@ -43,6 +44,27 @@ cat feature upstream older > expected
 git show :Notes.md > staged
 diff -u expected staged
 GIT_EDITOR=true git rebase --continue
+
+# The driver runs inside Git, so a fully resolved replay needs no continue.
+git checkout -q driver-feature
+printf '%s\n' 'Notes.md merge=mediate conflict-marker-size=11' > .git/info/attributes
+git config merge.mediate.driver 'git-mediate --markdown-bullets --merge-driver %O %A %B %L %P'
+git rebase main
+git show HEAD:Notes.md > committed
+diff -u expected committed
+
+# A real driver conflict uses the requested marker width and leaves the
+# path unmerged for Git to report.
+git branch competing
+printf '%s\n' '- Our replacement' > Notes.md
+git commit -qam ours
+git checkout -q competing
+printf '%s\n' '- Their replacement' > Notes.md
+git commit -qam theirs
+if git merge driver-feature; then exit 1; fi
+test -n "$(git ls-files -u -- Notes.md)"
+grep -q '^<<<<<<<<<<< ours$' Notes.md
+git merge --abort
 
 unresolved () {
     cp "$1" original

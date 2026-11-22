@@ -1,5 +1,7 @@
 ## Unreleased
 
+* Add an opt-in Git merge driver that applies git-mediate after Git’s three-way text merge
+
 * Add `--markdown-bullets` to merge concurrent list additions with the incoming entries first
 
 ## 1.2.0 / 2026.08.19

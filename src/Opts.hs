@@ -2,7 +2,7 @@
 -- | Option parser
 
 module Opts
-    ( Options(..), EnvOptions(..)
+    ( Options(..), EnvOptions(..), MergeDriver(..)
     , getOpts
     ) where
 
@@ -21,7 +21,16 @@ data Options = Options
     , shouldUseColor :: Maybe ColorEnable
     , shouldSetConflictStyle :: Bool
     , mergeSpecificFile :: Maybe FilePath
+    , mergeDriver :: Maybe MergeDriver
     , envOptions :: EnvOptions
+    }
+
+data MergeDriver = MergeDriver
+    { baseFile :: FilePath
+    , currentFile :: FilePath
+    , incomingFile :: FilePath
+    , markerSize :: Int
+    , targetPath :: FilePath
     }
 
 -- Options which can be defaulted from the GIT_MEDIATE_OPTIONS environment variable
@@ -54,8 +63,20 @@ optionsParser envOpts =
         ( O.strOption
             ( O.long "merge-file" <> O.short 'f' <> O.help "Merge a specific file")
         )
+    <*> O.optional
+        ( O.flag' MergeDriver
+            (O.long "merge-driver" <> O.help "Run as a Git merge driver with %O %A %B %L %P")
+            <*> O.strArgument (O.metavar "BASE")
+            <*> O.strArgument (O.metavar "CURRENT")
+            <*> O.strArgument (O.metavar "INCOMING")
+            <*> O.argument (O.auto >>= positive) (O.metavar "MARKER-SIZE")
+            <*> O.strArgument (O.metavar "PATH")
+        )
     <*> envOpts
     where
+        positive n
+            | n > 0 = pure n
+            | otherwise = O.readerError "Marker size must be positive"
         colorParser =
             O.flag' (Just EnableColor)
                 (O.long "color" <> O.short 'c' <> O.help "Enable color")

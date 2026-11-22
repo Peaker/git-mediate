@@ -5,7 +5,7 @@ module Conflict
     ( Conflict(..), Sides(..), SrcContent(..)
     , setEachBody, setStrings
     , pretty, prettyLines
-    , parse
+    , parse, parseWithMarkerSize
     ) where
 
 import Control.Monad.State (MonadState, evalStateT, state)
@@ -110,13 +110,13 @@ parseConflict markerA =
     where
         markerCount = Just (length (takeWhile (== '<') markerA.content))
 
-parseFromNumberedLines :: [SrcContent] -> [Either String Conflict]
-parseFromNumberedLines =
+parseFromNumberedLines :: Maybe Int -> [SrcContent] -> [Either String Conflict]
+parseFromNumberedLines markerSize =
     snd . runWriter . evalStateT loop
     where
         loop =
             do
-                (ls, mMarkerA) <- tryReadUpToMarker '<' Nothing
+                (ls, mMarkerA) <- tryReadUpToMarker '<' markerSize
                 tell $ map (Left . (.content)) ls
                 case mMarkerA of
                     Nothing -> pure ()
@@ -126,4 +126,10 @@ parseFromNumberedLines =
                             loop
 
 parse :: String -> [Either String Conflict]
-parse = parseFromNumberedLines . zipWith SrcContent [1 ..] . lines
+parse = parseWithMarkers Nothing
+
+parseWithMarkerSize :: Int -> String -> [Either String Conflict]
+parseWithMarkerSize = parseWithMarkers . Just
+
+parseWithMarkers :: Maybe Int -> String -> [Either String Conflict]
+parseWithMarkers markerSize = parseFromNumberedLines markerSize . zipWith SrcContent [1 ..] . lines
