@@ -1,0 +1,51 @@
+#!/bin/sh
+
+set -eux
+
+DIR="$( dirname "$0" )"
+cd "${DIR}"
+
+export HOME="$(pwd)"
+
+cleanup () {
+  rm -rf .git .gitconfig f target stderr
+}
+trap cleanup EXIT
+cleanup
+
+git init >/dev/null
+git config user.email test@test.com
+git config user.name Test
+git config --global merge.conflictstyle diff3
+printf 'a\nb\nc\n' > f
+echo target > target
+git add f target
+git commit -m'base' >/dev/null
+git branch base
+git checkout -b symlink >/dev/null 2>&1
+rm f
+ln -s target f
+git add f
+git commit -m'f changed to a symlink' >/dev/null
+git checkout -b modified base >/dev/null 2>&1
+printf 'a\nB\nc\n' > f
+git commit -am'f modified' >/dev/null
+
+# The "resolve" strategy leaves a single path with entries of different
+# types and only one side in the working tree, without conflict markers.
+for pair in 'modified symlink' 'symlink modified'; do
+  set -- $pair
+  git checkout -f "$1" >/dev/null 2>&1
+  (git merge -s resolve "$2" >/dev/null 2>&1 && exit 1) ||
+  echo 'Conflict set up successfully'
+
+  git-mediate 2>stderr >/dev/null &&
+  (echo 'should fail to resolve a type conflict' ; exit 1)
+  grep -q 'different types' stderr
+  rm stderr
+  test -n "$(git ls-files --unmerged -- f)" ||
+  (echo 'should leave the type conflict unmerged' ; exit 1)
+  git merge --abort
+done
+
+echo Success

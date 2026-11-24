@@ -2,7 +2,7 @@
 
 module Git
     ( StatusLine(..), StatusCode, getStatus, getRootDir, getCdUp, add
-    , makeFilesMatchingPrefixes
+    , makeFilesMatchingPrefixes, getUnmergedModes
     ) where
 
 import           Control.Monad (when, filterM)
@@ -68,6 +68,12 @@ relativePath base path
     where
         rel = makeRelative base path
         revRel = makeRelative path base
+
+-- | The modes of the index entries of an unmerged path
+getUnmergedModes :: FilePath -> IO [String]
+getUnmergedModes path =
+    map (takeWhile (/= ' ')) . filter (not . null) . splitOn "\0"
+    <$> readProcess "git" ["--literal-pathspecs", "ls-files", "--unmerged", "-z", "--", path] ""
 
 add :: FilePath -> IO ()
 add fileName = callProcess "git" ["add", "--", fileName]

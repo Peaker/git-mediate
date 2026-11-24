@@ -4,6 +4,8 @@
 
 * Add `--markdown-bullets` to merge concurrent list additions with the incoming entries first
 
+* Don't git-add conflicts whose sides have different types (e.g. a file changed to a symlink) ([#28](https://github.com/Peaker/git-mediate/issues/28))
+
 ## 1.2.0 / 2026.08.19
 
 * Add optional automatic resolution of indentation-only conflicts

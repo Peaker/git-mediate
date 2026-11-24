@@ -10,7 +10,7 @@ import           Data.Algorithm.Diff (Diff, PolyDiff(..))
 import           Data.Either (rights)
 import           Data.Foldable (traverse_)
 import           Data.Char (toLower)
-import           Data.List (isPrefixOf)
+import           Data.List (isPrefixOf, nub)
 import           Environment (checkConflictStyle, openEditor, shouldUseColorByTerminal)
 import qualified Git
 import qualified Opts
@@ -126,8 +126,30 @@ handleFileResult colorEnable opts fileName res
             , failedToResolve = failures
             } = res.result
 
+-- | Whether the sides of a conflict have different types (e.g. a file changed
+-- to a symlink on one side and modified on the other). Git may leave only one
+-- side in the working tree without conflict markers, which isn't a resolution.
+hasTypeConflict :: FilePath -> IO Bool
+hasTypeConflict path =
+    (> 1) . length . nub . map normalize <$> Git.getUnmergedModes path
+    where
+        -- Executable bit differences aren't type differences
+        normalize "100755" = "100644"
+        normalize mode = mode
+
 resolve :: ColorEnable -> Options -> FilePath -> IO Result
 resolve colorEnable opts fileName =
+    do
+        typeConflict <- hasTypeConflict fileName
+        if typeConflict
+            then do
+                hPutStrLn stderr $ show fileName
+                    ++ " has sides of different types (e.g. a file and a symlink), resolve it manually."
+                pure (Result 0 0 1)
+            else resolveFile colorEnable opts fileName
+
+resolveFile :: ColorEnable -> Options -> FilePath -> IO Result
+resolveFile colorEnable opts fileName =
     do
         input <- readFile' fileName
         if Conflict.hasTwoWayConflict input

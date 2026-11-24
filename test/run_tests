@@ -24,4 +24,7 @@ echo 'Haskell imports test'
 echo 'Markdown bullets test'
 "${DIR}"/markdown-bullets/test
 
+echo 'Type change test'
+"${DIR}"/type-change/test
+
 echo 'Tests successful'
