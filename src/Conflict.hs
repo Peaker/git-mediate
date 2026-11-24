@@ -5,7 +5,7 @@ module Conflict
     ( Conflict(..), Sides(..), SrcContent(..)
     , setEachBody, setStrings
     , pretty, prettyLines
-    , parse, parseWithMarkerSize
+    , parse, parseWithMarkerSize, hasTwoWayConflict
     ) where
 
 import Control.Monad.State (MonadState, evalStateT, state)
@@ -133,3 +133,26 @@ parseWithMarkerSize = parseWithMarkers . Just
 
 parseWithMarkers :: Maybe Int -> String -> [Either String Conflict]
 parseWithMarkers markerSize = parseFromNumberedLines markerSize . zipWith SrcContent [1 ..] . lines
+
+hasTwoWayConflict :: String -> Bool
+hasTwoWayConflict = scan . map stripCR . lines
+    where
+        stripCR = reverse . dropWhile (== '\r') . reverse
+        openingSize = length . takeWhile (== '<')
+        isOpening line = openingSize line >= 7 && isMarker (openingSize line) '<' line
+        scan ls =
+            case dropWhile (not . isOpening) ls of
+                [] -> False
+                start:rest ->
+                    let size = openingSize start
+                        (body, end) = break (isMarker size '>') rest
+                    in case end of
+                        [] -> False
+                        _:remaining ->
+                            (replicate size '=' `elem` body && not (any (isMarker size '|') body))
+                            || scan remaining
+        isMarker size c line =
+            case splitAt size line of
+                (prefix, []) -> prefix == replicate size c
+                (prefix, ' ':_) -> prefix == replicate size c
+                _ -> False

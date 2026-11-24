@@ -9,6 +9,7 @@ import           Control.Monad (when, unless)
 import           Data.Algorithm.Diff (Diff, PolyDiff(..))
 import           Data.Either (rights)
 import           Data.Foldable (traverse_)
+import           Data.Char (toLower)
 import           Data.List (isPrefixOf)
 import           Environment (checkConflictStyle, openEditor, shouldUseColorByTerminal)
 import qualified Git
@@ -23,7 +24,7 @@ import           StrUtils ((</>), ensureNewline)
 import           System.Directory (renameFile, removeFile, getPermissions, setPermissions)
 import           System.Exit (ExitCode(..), exitWith)
 import           System.FilePath ((<.>))
-import           System.IO (readFile')
+import           System.IO (hFlush, hIsEOF, hIsTerminalDevice, hPutStr, hPutStrLn, readFile', stderr, stdin)
 import           System.Process (callProcess, rawSystem, readProcess)
 
 import           Prelude.Compat
@@ -128,11 +129,50 @@ handleFileResult colorEnable opts fileName res
 resolve :: ColorEnable -> Options -> FilePath -> IO Result
 resolve colorEnable opts fileName =
     do
-        resolutions <-
-            Resolution.resolveContent opts.envOptions.resolution fileName
-            . Conflict.parse
-            <$> readFile fileName
-        resolutions.result <$ handleFileResult colorEnable opts fileName resolutions
+        input <- readFile' fileName
+        if Conflict.hasTwoWayConflict input
+            then do
+                recreated <- recreateConflictMarkers fileName
+                if recreated
+                    then do
+                        regenerated <- readFile' fileName
+                        if Conflict.hasTwoWayConflict regenerated
+                            then do
+                                hPutStrLn stderr "Git still produced two-way conflict markers."
+                                pure (Result 0 0 1)
+                            else resolveInput regenerated
+                    else pure (Result 0 0 1)
+            else resolveInput input
+    where
+        resolveInput input =
+            let resolutions = Resolution.resolveContent opts.envOptions.resolution fileName
+                    (Conflict.parse input)
+            in resolutions.result <$ handleFileResult colorEnable opts fileName resolutions
+
+recreateConflictMarkers :: FilePath -> IO Bool
+recreateConflictMarkers path =
+    do
+        hPutStrLn stderr $ show path ++ " has two-way conflict markers."
+        unmerged <- readProcess "git" ["--literal-pathspecs", "ls-files", "--unmerged", "--", path] ""
+        interactive <- hIsTerminalDevice stdin
+        if null unmerged
+            then do
+                hPutStrLn stderr "An unmerged index entry is required to recreate the markers."
+                pure False
+            else if interactive
+                then do
+                    hPutStr stderr "Recreate markers in diff3 style? This discards all working-tree edits to this file. [y/N] "
+                    hFlush stderr
+                    eof <- hIsEOF stdin
+                    answer <- if eof then pure "" else getLine
+                    if map toLower answer `elem` ["y", "yes"]
+                        then do
+                            callProcess "git" ["--literal-pathspecs", "checkout", "-m", "--conflict=diff3", "--", path]
+                            pure True
+                        else pure False
+                else do
+                    hPutStrLn stderr "Run git-mediate in a terminal to confirm recreating the markers in diff3 style."
+                    pure False
 
 withAllStageFiles ::
     FilePath -> (FilePath -> Maybe FilePath -> Maybe FilePath -> IO b) -> IO b

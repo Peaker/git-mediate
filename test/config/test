@@ -10,7 +10,7 @@ export HOME="$(pwd)"
 pwd
 
 cleanup () {
-  rm -rf .git .gitconfig
+  rm -rf .git .gitconfig sample before
 }
 trap cleanup EXIT
 cleanup
@@ -52,5 +52,28 @@ else
   echo 'The -s option did not set conflict style'
   exit 1
 fi
+
+git config user.name Test
+git config user.email test@example.org
+git config --global --unset merge.conflictstyle
+printf 'base\n' > sample
+git add sample
+git commit -qm base
+git switch -qc other
+printf 'theirs\n' > sample
+git commit -qam theirs
+git switch -q -
+printf 'ours\n' > sample
+git commit -qam ours
+if git -c merge.conflictstyle=merge merge other; then
+  exit 1
+fi
+cp sample before
+status=0
+output=$(git-mediate -s -d </dev/null 2>&1) || status=$?
+test "$status" -eq 111
+test "$(git config merge.conflictstyle)" = zdiff3
+printf '%s\n' "$output" | grep -F 'Run git-mediate in a terminal'
+cmp before sample
 
 echo Success

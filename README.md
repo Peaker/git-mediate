@@ -10,6 +10,8 @@ One useful way to handle them, is to use git's {z,}diff3 conflict style:
 git config --global merge.conflictstyle zdiff3
 ```
 
+You can also set this with `git-mediate -s`.
+
 And then when you get a conflict, it looks like:
 
     Unconflicted stuff
