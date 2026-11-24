@@ -86,8 +86,8 @@ handleFileResult :: ColorEnable -> Options -> FilePath -> NewContent -> IO ()
 handleFileResult colorEnable opts fileName res
     | successes == 0 && allGood =
         do
-            putStrLn $ fileName ++ ": No conflicts, git-adding"
-            Git.add fileName
+            putStrLn $ fileName ++ ": No conflicts, " ++ indexAction
+            updateIndex fileName
     | successes == 0 && reductions == 0 =
         do
             putStrLn $ concat
@@ -109,13 +109,16 @@ handleFileResult colorEnable opts fileName res
             putStrLn $ concat
                 [ fileName, ": Successfully resolved ", show successes
                 , " conflicts (failed to resolve ", show (reductions + failures), " conflicts)"
-                , if allGood then ", git adding" else ""
+                , if allGood then ", " ++ indexAction else ""
                 ]
             overwrite fileName res.newContent
             if allGood
-                then Git.add fileName
+                then updateIndex fileName
                 else doDump
     where
+        (indexAction, updateIndex)
+            | opts.shouldResetIndex = ("resetting index", Git.resetIndex)
+            | otherwise = ("git adding", Git.add)
         allGood = Resolution.fullySuccessful res.result
         doDump =
             dumpAndOpenEditor colorEnable opts fileName

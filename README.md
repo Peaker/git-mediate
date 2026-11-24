@@ -70,6 +70,11 @@ select that side appropriately.
 When all conflicts have been resolved in a file, "git add" will be
 used on it automatically.
 
+Use `git mediate --reset-index` after a conflicted `git stash pop` to
+leave resolved changes unstaged. For each fully resolved path, this resets
+the index entry to `HEAD`, discarding any staged changes for that path
+and preserving the resolved working-tree contents.
+
 ### Simpler case
 
 You might just resolve the conflicts manually and remove the merge markers from all of the conflicts.

@@ -1,7 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude, OverloadedRecordDot #-}
 
 module Git
-    ( StatusLine(..), StatusCode, getStatus, getRootDir, getCdUp, add
+    ( StatusLine(..), StatusCode, getStatus, getRootDir, getCdUp, add, resetIndex
     , makeFilesMatchingPrefixes, getUnmergedModes
     ) where
 
@@ -77,6 +77,10 @@ getUnmergedModes path =
 
 add :: FilePath -> IO ()
 add fileName = callProcess "git" ["add", "--", fileName]
+
+resetIndex :: FilePath -> IO ()
+resetIndex fileName =
+    callProcess "git" ["--literal-pathspecs", "reset", "--quiet", "--", fileName]
 
 -- TODO: Is this different from getRootDir?
 getCdUp :: IO FilePath

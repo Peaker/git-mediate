@@ -20,6 +20,7 @@ data Options = Options
     , shouldDumpDiff2 :: Bool
     , shouldUseColor :: Maybe ColorEnable
     , shouldSetConflictStyle :: Bool
+    , shouldResetIndex :: Bool
     , mergeSpecificFile :: Maybe FilePath
     , mergeDriver :: Maybe MergeDriver
     , envOptions :: EnvOptions
@@ -58,6 +59,10 @@ optionsParser envOpts =
     <*> O.switch
         ( O.long "style" <> O.short 's'
             <> O.help "Configure git's global merge.conflictstyle to zdiff3 if needed"
+        )
+    <*> O.switch
+        ( O.long "reset-index"
+            <> O.help "Reset the index to HEAD for resolved paths, leaving working-tree edits unstaged"
         )
     <*> O.optional
         ( O.strOption
